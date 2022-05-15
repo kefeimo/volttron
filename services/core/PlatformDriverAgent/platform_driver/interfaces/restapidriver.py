@@ -42,7 +42,7 @@ import math
 from math import pi
 
 from platform_driver.interfaces import BaseInterface, BaseRegister, BasicRevert
-from ...platform_driver.interfaces import BaseInterface, BaseRegister, BasicRevert
+# from ...platform_driver.interfaces import BaseInterface, BaseRegister, BasicRevert
 from csv import DictReader
 from io import StringIO
 import logging
@@ -71,7 +71,7 @@ class TemplateRegister(BaseRegister):
     # TODO: do we need to separate read-only and writable register? How a writable register looks like?
     # TODO: e.g., How the set-value pass to the register class?
     # TODO: (Mimic what happen to get_register_value method, we might need a controller method.
-    def __init__(self, driver_config: dict, read_only: bool, point_name: str, units: str, reg_type: str,
+    def __init__(self, driver_config: dict, point_name: str, data_type: str, units: str, read_only: bool,
                  default_value=None, description=''):
         """
         Parameters  # TODO: clean this up,
@@ -95,24 +95,34 @@ class TemplateRegister(BaseRegister):
         """
         super().__init__("byte", read_only, point_name, units, description='')
         self._value: str = ""
-        self.config_dict: dict = driver_config
-        self.reg_type: str = reg_type
+        self.driver_config: dict = driver_config
+
         self.point_name: str = point_name
+        self.data_type_str: str = data_type  # "byte" or "bit"
+        self.units: Optional[str] = units
         self.read_only: bool = read_only
+        self.default_value: Optional[RegisterValue] = default_value
+        self.description: str = description
 
     @property
     def value(self):
-        return self.get_register_value()
+        self._value = self.get_register_value()  # pre-requite methods
+        return self._value
 
     @value.setter
-    def value(self, x):
+    def value(self, x: RegisterValue):
+        if self.read_only:
+            raise RuntimeError(  # TODO: Is RuntimeError necessary
+                "Trying to write to a point configured read only: " + self.point_name)  # TODO: clean up
         self._value = x
+        self.set_register_value()  # ad-hoc methods
+
 
     @abc.abstractmethod
     def get_register_value(self, **kwargs) -> any:
         """
         Override this to get register value
-        Examples:
+        Examples 1 retrieve:
             def get_register_value():
                 some_url: str = self.config_dict.get("url")
                 return self.get_restAPI_value(url=some_url)
@@ -123,14 +133,15 @@ class TemplateRegister(BaseRegister):
 
         """
 
-    # @abc.abstractmethod
-    # def set_register_value(self, **kwargs) -> None:  # TODO: need an example/redesign for this
+    @abc.abstractmethod
+    def set_register_value(self, **kwargs) -> None:  # TODO: need an example/redesign for this
+        pass
     #     """
     #     Override this to set register value. (Only for writable==True/read_only==False)
     #     Examples:
     #         def set_register_value():
     #             some_temperature: int = get_comfortable_temperature(...)
-    #             self.value = some_temperature
+    #             self.value(some_temperature)
     #         def get_comfortable_temperature(**kwargs) -> int:
     #             ...
     #     Returns
@@ -151,7 +162,7 @@ class FakeRegister(TemplateRegister):
 class RestAPIRegister(TemplateRegister):
 
     def get_register_value(self) -> str:
-        return self.get_json_str(self.config_dict.get("url"))
+        return self.get_json_str(self.driver_config.get("url"))
 
     @staticmethod
     def get_json_str(url: str) -> str:
@@ -175,6 +186,78 @@ class RestAPIRegister(TemplateRegister):
         return activity_info_str
 
 
+class DriverConfig:
+    """
+    For validate driver configuration, e.g., driver-config.csv
+    """
+    def __init__(self, csv_config: List[dict]):
+        self.csv_config: List[dict] = csv_config
+        """
+
+        Parameters
+        ----------
+        csv_config
+
+        Returns
+        -------
+        Examples:
+            [{'Point Name': 'Heartbeat', 'Volttron Point Name': 'Heartbeat', 'Units': 'On/Off',
+            'Units Details': 'On/Off', 'Writable': 'TRUE', 'Starting Value': '0', 'Type': 'boolean',
+            'Notes': 'Point for heartbeat toggle'},
+            {'Point Name': 'Catfact', 'Volttron Point Name': 'Catfact', 'Units': 'No cat fact',
+            'Units Details': 'No cat fact', 'Writable': 'TRUE', 'Starting Value': 'No cat fact', 'Type': 'str',
+            'Notes': 'Cat fact extract from REST API'}]
+        """
+
+
+    @staticmethod
+    def _validate_header(point_config: dict):
+        """
+        Require the header include the following keys
+        "PointName", "DataType", "Units", "ReadOnly", "DefaultValue", "Description"
+        (or allow parsing with minimal effort)
+        "PointName" <- "Point Name", "point name", "point-name", but not "point names" or "the point name"
+        Parameters
+        ----------
+        point_config
+
+        Returns
+        -------
+
+        """
+
+        def _to_alpha_lower(key: str):
+            return ''.join([x.lower() for x in key if x.isalpha()])
+
+        new_dict = {_to_alpha_lower(k): v for k, v in point_config.items()}
+        new_keys = new_dict.keys()
+
+        standardized_valid_names = ["PointName", "DataType", "Units", "ReadOnly", "DefaultValue", "Description"]
+        for valid_name in standardized_valid_names:
+            if valid_name.lower() not in new_keys:
+                raise ValueError(f"`{valid_name}` is not in the config")
+        return new_dict
+
+    def key_validate(self) -> List[dict]:
+        """
+
+        Returns
+            EXAMPLE:
+            {'pointname': 'Heartbeat',
+            'datatype': 'boolean',
+            'units': 'On/Off',
+            'readonly': 'TRUE',
+            'defaultvalue': '0',
+            'description': 'Point for heartbeat toggle',
+            'volttronpointname': 'Heartbeat',
+            'unitsdetails': 'On/Off'}
+        -------
+
+        """
+        key_validate_csv = [self._validate_header(point_config) for point_config in self.csv_config]
+        return key_validate_csv
+
+
 
 class TemplateInterface(BasicRevert, BaseInterface):
     def __init__(self, **kwargs):
@@ -184,9 +267,9 @@ class TemplateInterface(BasicRevert, BaseInterface):
 
         # TODO: clean up this public interface
         # from *.csv configure file "driver_config": {...}
-        # self.config_dict: dict = {}
+        # self.driver_config: dict = {}
 
-    def configure(self, config_dict: dict, registry_config_str: List[dict]):
+    def configure(self, driver_config_in_json_config: dict, csv_config: List[dict]):  # TODO: ask driver.py, BaseInterface.configure to update signature when evoking
         """
         Used by driver.py
             def get_interface(self, driver_type, config_dict, config_string):
@@ -206,43 +289,88 @@ class TemplateInterface(BasicRevert, BaseInterface):
             'Notes': 'Cat fact extract from REST API'}]
 
         """
-        self.parse_config(registry_config_str, config_dict)
-
-    def parse_config(self, csv_config: List[dict], driver_config_in_json_config: dict):  # TODO: this configDict is from *.csv not .config
         print("========================================== csv_config, ", csv_config)
         print("========================================== driver_config_in_json_config, ", driver_config_in_json_config)
-        if csv_config is None:
+        self.parse_config(csv_config, driver_config_in_json_config)
+
+    # def parse_config(self, csv_config: List[dict], driver_config_in_json_config: dict):  # TODO: this configDict is from *.csv not .config
+    #
+    #     if csv_config is None:
+    #         return
+    #
+    #     # TODO-developer: define register lists. Need to match *.csv point orders.
+    #     register_types: List[ImplementedRegister]  # subclass of Type[TemplateRegister]
+    #     register_types = [
+    #         FakeRegister,
+    #         RestAPIRegister]
+    #
+    #     driver_config: DriverConfig = DriverConfig(csv_config)
+    #     valid_csv_config = DriverConfig(csv_config).key_validate()
+    #
+    #     for point_config, register_type_iter in zip(valid_csv_config, register_types):  # TODO: clean global variable
+    #
+    #         point_name = point_config.get("pointname")
+    #         data_type = point_config.get("datatype")
+    #         units = point_config.get("units")
+    #         read_only = point_config.get("readonly")
+    #         default_value = point_config.get("defaultvalue")
+    #         description = point_config.get("description")
+    #
+    #         reg_type = type_mapping.get(data_type, str)  # TODO: what is this?
+    #
+    #
+    #         # register_type = FakeRegister if not point_name.startswith('Cat') else CatfactRegister  # TODO: change this
+    #         register_type: ImplementedRegister = register_type_iter  # TODO: OMG, who wrote this!!! Instantiate directly.
+    #
+    #         register = register_type(driver_config_in_json_config,
+    #                                  point_name,
+    #                                  reg_type,  # TODO: what is this?
+    #                                  units,
+    #                                  read_only,
+    #                                  default_value=default_value,
+    #                                  description=description)
+    #
+    #         self.insert_register(register)
+
+    def parse_config(self, csv_config, driver_config_in_json_config):  # TODO: this configDict is from *.csv not .config
+        print("========================================== csv_config, ", csv_config)
+        print("========================================== driver_config_in_json_config, ", driver_config_in_json_config)
+
+        driver_config: DriverConfig = DriverConfig(csv_config)
+        valid_csv_config = DriverConfig(csv_config).key_validate()
+        print("========================================== valid_csv_config, ", valid_csv_config)
+
+        if csv_config is None:  # TODO: leave it now. Later for central data check
             return
 
-        # TODO-developer: define register lists. Need to match *.csv point orders.
         register_types: List[ImplementedRegister]  # subclass of Type[TemplateRegister]
         register_types = [
             FakeRegister,
-            RestAPIRegister, int]
+            RestAPIRegister]
 
-        for regDef, register_type_iter in zip(csv_config, register_types):  # TODO: clean global variable
+        for regDef, register_type_iter in zip(valid_csv_config, register_types):  # TODO: clean global variable
             # Skip lines that have no address yet.
-            if not regDef['Point Name']:
+            if not regDef['pointname']:
                 continue
 
-            read_only = regDef['Writable'].lower() != 'true'
-            point_name = regDef['Volttron Point Name']
-            description = regDef.get('Notes', '')
-            units = regDef['Units']
-            default_value = regDef.get("Starting Value", 'sin').strip()
+            read_only = regDef['readonly'].lower() != 'true'
+            point_name = regDef['pointname']
+            description = regDef.get('Description', '')
+            units = regDef['units']
+            default_value = regDef.get("defaultfalue", 'sin').strip()
             if not default_value:
                 default_value = None
-            type_name = regDef.get("Type", 'string')
+            type_name = regDef.get("datatype", 'string')
             reg_type = type_mapping.get(type_name, str)
 
             # register_type = FakeRegister if not point_name.startswith('Cat') else CatfactRegister  # TODO: change this
             register_type = register_type_iter  # TODO: OMG, who wrote this!!! Instantiate directly.
 
             register = register_type(driver_config_in_json_config,
-                                     read_only,
                                      point_name,
+                                     reg_type,  # TODO: what is this?
                                      units,
-                                     reg_type,
+                                     read_only,
                                      default_value=default_value,
                                      description=description)
 
@@ -269,14 +397,28 @@ class TemplateInterface(BasicRevert, BaseInterface):
 
         return register.value
 
-    def _set_point(self, point_name, value):  # TODO: this method has some problem. Understand the logic: overall + example
-        register: ImplementedRegister = self.get_register_by_name(point_name)
-        if register.read_only:
-            raise RuntimeError(  # TODO: Is RuntimeError necessary
-                "Trying to write to a point configured read only: " + point_name)
+    def _set_point(self, point_name: str, value_to_set: RegisterValue):  # TODO: this method has some problem. Understand the logic: overall + example
+        """
+        Parameters
+        ----------
+        point_name
+        value
 
-        register.value = register.reg_type(value)
-        return register.value
+        Returns
+        -------
+
+        """
+        register: ImplementedRegister = self.get_register_by_name(point_name)
+        # Note: leave register method to verify, e.g., check writability.
+        register.value(value_to_set)
+        value_response: RegisterValue = register.value
+        # TODO: redesign the try except logic
+        try:
+            assert (value_response == value_to_set)
+        except AssertionError as e:
+            print(e)
+            raise "Set value failed"
+        return value_response
 
     def _scrape_all(self) -> Dict[str, any]:
         result: Dict[str, RegisterValue] = {}  # Dict[register.point_name, register.value]
@@ -306,73 +448,8 @@ class DriverInterfaceError(Exception):
     pass
 
 
-# class Interface(BasicRevert, BaseInterface):
-#     def __init__(self, **kwargs):
-#         super(Interface, self).__init__(**kwargs)
-#
-#         # TODO: clean up this public interface
-#         # from *.csv configure file "driver_config": {...}
-#         # self.config_dict: dict = {}
-#
-#     def configure(self, config_dict, registry_config_str):
-#         self.parse_config(registry_config_str, config_dict)
-#
-#     def get_point(self, point_name):
-#         register = self.get_register_by_name(point_name)
-#
-#         return register.value
-#
-#     def _set_point(self, point_name, value):
-#         register = self.get_register_by_name(point_name)
-#         if register.read_only:
-#             raise RuntimeError(
-#                 "Trying to write to a point configured read only: " + point_name)
-#
-#         register.value = register.reg_type(value)
-#         return register.value
-#
-#     def _scrape_all(self):
-#         result = {}
-#         read_registers = self.get_registers_by_type("byte", True)
-#         write_registers = self.get_registers_by_type("byte", False)
-#         for register in read_registers + write_registers:
-#             result[register.point_name] = register.value
-#
-#         return result
-#
-#     def parse_config(self, configDict, config_dict):  # TODO: this configDict is from *.csv not .config
-#         print("========================================== configDict, ", configDict)
-#         print("========================================== configDict, ", config_dict)
-#         if configDict is None:
-#             return
-#
-#         for regDef, register_type_iter in zip(configDict, register_types):  # TODO: clean global variable
-#             # Skip lines that have no address yet.
-#             if not regDef['Point Name']:
-#                 continue
-#
-#             read_only = regDef['Writable'].lower() != 'true'
-#             point_name = regDef['Volttron Point Name']
-#             description = regDef.get('Notes', '')
-#             units = regDef['Units']
-#             default_value = regDef.get("Starting Value", 'sin').strip()
-#             if not default_value:
-#                 default_value = None
-#             type_name = regDef.get("Type", 'string')
-#             reg_type = type_mapping.get(type_name, str)
-#
-#             # register_type = FakeRegister if not point_name.startswith('Cat') else CatfactRegister  # TODO: change this
-#             register_type = register_type_iter  # TODO: OMG, who wrote this!!! Instantiate directly.
-#
-#             register = register_type(config_dict,
-#                                      read_only,
-#                                      point_name,
-#                                      units,
-#                                      reg_type,
-#                                      default_value=default_value,
-#                                      description=description)
-#
-#             if default_value is not None:
-#                 self.set_default(point_name, register.value)
-#
-#             self.insert_register(register)
+class Interface(TemplateInterface):
+    pass
+
+
+
