@@ -295,19 +295,30 @@ class TemplateInterface(BasicRevert, BaseInterface):
             if not regDef['pointname']:
                 continue
 
-            read_only = regDef['readonly'].lower() != 'true'
             point_name = regDef['pointname']
-            description = regDef.get('Description', '')
-            units = regDef['units']
-            default_value = regDef.get("defaultfalue", 'sin').strip()
-            if not default_value:
-                default_value = None
             type_name = regDef.get("datatype", 'string')
             reg_type = type_mapping.get(type_name, str)
+            units = regDef['units']
+            read_only = regDef['readonly'].lower() != 'true'
+
+            description = regDef.get('description', '')
+
+            # default_value = regDef.get("defaultvalue", 'sin').strip()
+            default_value = regDef.get("defaultvalue")  # TODO: redesign default value logic, e.g., beable to map to real python type
+            if not default_value:
+                default_value = None
+
+
 
             # register_type = FakeRegister if not point_name.startswith('Cat') else CatfactRegister  # TODO: change this
             register_type = register_type_iter  # TODO: OMG, who wrote this!!! Instantiate directly.
 
+            print("========================================== point_name, ", point_name)
+            print("========================================== reg_type, ", reg_type)
+            print("========================================== units, ", units)
+            print("========================================== read_only, ", read_only)
+            print("========================================== default_value, ", default_value)
+            print("========================================== description, ", description)
             register = register_type(driver_config_in_json_config,
                                      point_name,
                                      reg_type,  # TODO: what is this?
