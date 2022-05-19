@@ -311,7 +311,7 @@ class TemplateInterface(BasicRevert, BaseInterface):
 
 
             # register_type = FakeRegister if not point_name.startswith('Cat') else CatfactRegister  # TODO: change this
-            register_type = register_type_iter  # TODO: OMG, who wrote this!!! Instantiate directly.
+            register_type = register_type_iter  # TODO: Inconventional, document this. 
 
             print("========================================== point_name, ", point_name)
             print("========================================== reg_type, ", reg_type)
@@ -321,7 +321,7 @@ class TemplateInterface(BasicRevert, BaseInterface):
             print("========================================== description, ", description)
             register = register_type(driver_config_in_json_config,
                                      point_name,
-                                     reg_type,  # TODO: what is this?
+                                     reg_type,  # TODO: make it more clear in documentation
                                      units,
                                      read_only,
                                      default_value=default_value,
