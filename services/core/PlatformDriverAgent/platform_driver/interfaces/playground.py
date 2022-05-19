@@ -1,8 +1,17 @@
-import sys
-
-print(sys.path)
-
-if __name__ == "__main__":
-    print(sys.path)
-
-
+x = \
+    [{'Reference Point Name': 'bitcoin_usd', 'Volttron Point Name': 'bitcoin_usd',
+      'Units': 'dollar', 'Units Details': '>0, up to 4 decimals, example: 24,602.4337',
+      'Notes': '1 bit coin value in US Dollar',
+      'Writable': 'false', 'Starting Value': '0', 'Data Type': 'float'},
+     {'Reference Point Name': 'bitcoin_gbp', 'Volttron Point Name': 'bitcoin_gbp',
+      'Units': 'pound', 'Units Details': '>0, up to 4 decimals, example: 24,602.4337',
+      'Notes': '1 bit coin value in British pound sterling',
+      'Writable': 'false', 'Starting Value': '0', 'Data Type': 'float'},
+     {'Reference Point Name': 'bitcoin_usd', 'Volttron Point Name': 'bitcoin_usd',
+      'Units': 'dollar', 'Units Details': '>0, up to 4 decimals, example: 24,602.4337',
+      'Notes': '1 bit coin value in Euro',
+      'Writable': 'false', 'Starting Value': '0', 'Data Type': 'float'},
+     {'Reference Point Name': 'bitcoin_usd', 'Volttron Point Name': 'bitcoin_usd',
+      'Units': 'dollar', 'Units Details': '>0, up to 4 decimals, example: 24,602.4337',
+      'Notes': 'used to test heart beat',
+      'Writable': 'false', 'Starting Value': '0', 'Data Type': 'boolean'}]

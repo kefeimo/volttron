@@ -1,0 +1,5 @@
+PointName,DataType,Units,ReadOnly,DefaultValue,Description,PointNameDetail,DataTypeDetail,UnitsDetail,ReadOnlyDetail,DefaultValueDetail,ExtraNotes
+bitcoin_usd,float,usd,True,,Bit coin value in US dollar,,float type in python.,,,,
+bitcoin_gbp,float,gbp,True,,Bit coin value in US dollar,,float type in python.,,,,
+bitcoin_eur,float,eur,True,,Bit coin value in US dollar,,float type in python.,,,,
+random_bool,bool,1,True,,Random bool value,,,,,,
