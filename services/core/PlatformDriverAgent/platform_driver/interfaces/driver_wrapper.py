@@ -202,7 +202,7 @@ class DriverConfig:
         new_dict = {_to_alpha_lower(k): v for k, v in point_config.items()}
         new_keys = new_dict.keys()
 
-        standardized_valid_names = ["PointName", "DataType", "Units", "ReadOnly", "DefaultValue", "Description"]
+        standardized_valid_names = ["Volttron Point Name", "Data Type", "Units", "Writable", "Default Value", "Notes"]
         for valid_name in standardized_valid_names:
             if valid_name.lower() not in new_keys:
                 raise ValueError(f"`{valid_name}` is not in the config")
@@ -282,36 +282,37 @@ class WrapperInterface(BasicRevert, BaseInterface):
         print("========================================== csv_config, ", csv_config)
         print("========================================== driver_config_in_json_config, ", driver_config_in_json_config)
 
-        driver_config: DriverConfig = DriverConfig(csv_config)
-        valid_csv_config = DriverConfig(csv_config).key_validate()
-        print("========================================== valid_csv_config, ", valid_csv_config)
+        # driver_config: DriverConfig = DriverConfig(csv_config)
+        # valid_csv_config = DriverConfig(csv_config).key_validate()
+        # print("========================================== valid_csv_config, ", valid_csv_config)
 
         if csv_config is None:  # TODO: leave it now. Later for central data check
             return
 
         register_types: List[ImplementedRegister] = self.pass_register_types()
+        valid_csv_config = csv_config  # TODO: Design the config check (No config check for now.)
         for regDef, register_type_iter in zip(valid_csv_config, register_types):
-            # Skip lines that have no address yet.
-            if not regDef['pointname']:
+            # Skip lines that have no address yet. # TODO: understand why
+            if not regDef['Point Name']:
                 continue
 
-            point_name = regDef['pointname']
-            type_name = regDef.get("datatype", 'string')
+            point_name = regDef['Volttron Point Name']
+            type_name = regDef.get("Data Type", 'string')
             reg_type = type_mapping.get(type_name, str)
-            units = regDef['units']
-            read_only = regDef['readonly'].lower() != 'true'
+            units = regDef['Units']
+            read_only = regDef['Writable'].lower() != 'true'  # TODO: watch out for this is opposite logic
 
-            description = regDef.get('description', '')
+            description = regDef.get('Notes', '')
 
             # default_value = regDef.get("defaultvalue", 'sin').strip()
-            default_value = regDef.get("defaultvalue")  # TODO: redesign default value logic, e.g., beable to map to real python type
+            default_value = regDef.get("Default Value")  # TODO: redesign default value logic, e.g., beable to map to real python type
             if not default_value:
                 default_value = None
 
 
 
             # register_type = FakeRegister if not point_name.startswith('Cat') else CatfactRegister  # TODO: change this
-            register_type = register_type_iter  # TODO: OMG, who wrote this!!! Instantiate directly.
+            register_type = register_type_iter  # TODO: Inconventional, document this.
 
             print("========================================== point_name, ", point_name)
             print("========================================== reg_type, ", reg_type)
@@ -321,7 +322,7 @@ class WrapperInterface(BasicRevert, BaseInterface):
             print("========================================== description, ", description)
             register = register_type(driver_config_in_json_config,
                                      point_name,
-                                     reg_type,  # TODO: what is this?
+                                     reg_type,  # TODO: make it more clear in documentation
                                      units,
                                      read_only,
                                      default_value=default_value,

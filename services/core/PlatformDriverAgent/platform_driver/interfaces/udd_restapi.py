@@ -12,8 +12,8 @@ import json
 
 # TODO-developer: Your code here
 # Change the classname "UserDevelopRegister" as needed
-class UserDevelopRegisterBitcoinRestAPI(WrapperRegister):
-    # boilerplate code. Don't touch me.
+class UDDBitcoinRestAPI(WrapperRegister):
+    # boilerplate code. Don't touch me.  # TODO: find a better way to display this
     # def __init__(self,
     #              driver_config: dict,
     #              point_name: str,
@@ -21,7 +21,8 @@ class UserDevelopRegisterBitcoinRestAPI(WrapperRegister):
     #              units: str, read_only: bool,
     #              default_value: Optional[RegisterValue] = None,
     #              description: str = ""):  # re-define for redability
-    #     super().__init__(driver_config, point_name, data_type, units, default_value, description)
+    #     super().__init__(driver_config, point_name, data_type, units, default_value, description)  # base class1
+    #     super().__init__("byte", read_only, point_name, units, description='')  # base class2
 
     def get_register_value(self) -> RegisterValue:
         # TODO-developer: Your code here
