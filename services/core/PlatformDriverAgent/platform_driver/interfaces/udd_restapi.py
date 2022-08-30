@@ -86,7 +86,7 @@ class UDDBitcoinRestAPI(WrapperRegister):
 # EXAMPLE:
 # register_types = [UserDevelopRegister, UserDevelopRegister]
 register_types: List[ImplementedRegister]
-register_types = [UserDevelopRegisterBitcoinRestAPI] * 4
+register_types = [UDDBitcoinRestAPI] * 4
 
 
 # boilerplate code. Don't touch me.
