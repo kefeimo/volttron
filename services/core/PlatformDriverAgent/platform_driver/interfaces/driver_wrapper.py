@@ -72,7 +72,7 @@ class WrapperRegister(BaseRegister):
     # TODO: e.g., How the set-value pass to the register class?
     # TODO: (Mimic what happen to get_register_value method, we might need a controller method.
     def __init__(self, driver_config: dict, point_name: str, data_type: RegisterValue, units: str, read_only: bool,
-                 default_value=None, description=''):
+                 default_value=None, description='', csv_config={}, *args, **kwargs):
         """
         Parameters  # TODO: clean this up,
         ----------
@@ -103,6 +103,7 @@ class WrapperRegister(BaseRegister):
         self.read_only: bool = read_only
         self.default_value: Optional[RegisterValue] = default_value
         self.description: str = description
+        self.csv_config: dict = csv_config
 
     @property
     def value(self):
@@ -320,13 +321,15 @@ class WrapperInterface(BasicRevert, BaseInterface):
             print("========================================== read_only, ", read_only)
             print("========================================== default_value, ", default_value)
             print("========================================== description, ", description)
+            # Note: the following is to init a register_type object, e.g., WrapperRegister
             register = register_type(driver_config_in_json_config,
                                      point_name,
                                      reg_type,  # TODO: make it more clear in documentation
                                      units,
                                      read_only,
                                      default_value=default_value,
-                                     description=description)
+                                     description=description,
+                                     csv_config=csv_config)
 
             if default_value is not None:
                 self.set_default(point_name, register.value)
