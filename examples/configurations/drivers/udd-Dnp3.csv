@@ -1,0 +1,5 @@
+Point Name,Volttron Point Name,Units,Units Details,Notes,Writable,Data Type
+bitcoin_usd,bitcoin_usd,dollar,">0, up to 4 decimals, example: 24,602.4337",1 bit coin value in US Dollar,false,float
+bitcoin_gbp,bitcoin_gbp,pound,">0, up to 4 decimals, example: 24,602.4337",1 bit coin value in British pound sterling,false,float
+bitcoin_eur,bitcoin_eur,euro,">0, up to 4 decimals, example: 24,602.4337",1 bit coin value in Euro,false,float
+random_bool,random_bool,1,True or False,used to test heart beat,false,boolean

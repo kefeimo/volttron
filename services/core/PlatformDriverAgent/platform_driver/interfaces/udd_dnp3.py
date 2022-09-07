@@ -63,7 +63,7 @@ class UserDevelopRegisterBitcoinRestAPI(WrapperRegister):
 
         #         print("silly implementation")
         # the url will be in the config file
-        print("=====Look at here. I am evoked.")
+        print("=====Look at here. I am evoked======.")
 
         # from pydnp3 import opendnp3
         # from .dnp3_python.master_new import MyMasterNew
