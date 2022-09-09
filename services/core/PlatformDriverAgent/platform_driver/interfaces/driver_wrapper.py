@@ -46,10 +46,20 @@ from platform_driver.interfaces import BaseInterface, BaseRegister, BasicRevert
 from csv import DictReader
 from io import StringIO
 import logging
+import sys
 
 import requests
 
 from typing import List, Type, Dict, Union, Optional
+
+stdout_stream = logging.StreamHandler(sys.stdout)
+stdout_stream.setFormatter(logging.Formatter('%(asctime)s\t%(name)s\t%(levelname)s\t%(message)s'))
+
+_log = logging.getLogger(__name__)
+_log = logging.getLogger("data_retrieval_demo")
+_log.addHandler(stdout_stream)
+_log.setLevel(logging.DEBUG)
+_log.setLevel(logging.WARNING)
 
 # TODO: parse to python_type based on literal. i.e., locate("int")("1") -> int(1)
 # Design the data type validation logic (recommend but not enforce?)
@@ -68,6 +78,7 @@ class WrapperRegister(BaseRegister):
     """
     Template Register, host boilerplate code
     """
+
     # TODO: do we need to separate read-only and writable register? How a writable register looks like?
     # TODO: e.g., How the set-value pass to the register class?
     # TODO: (Mimic what happen to get_register_value method, we might need a controller method.
@@ -103,7 +114,7 @@ class WrapperRegister(BaseRegister):
         self.read_only: bool = read_only
         self.default_value: Optional[RegisterValue] = default_value
         self.description: str = description
-        self.csv_config: dict = csv_config
+        self.csv_config: list = csv_config
 
     @property
     def value(self):
@@ -154,13 +165,11 @@ class WrapperRegister(BaseRegister):
 ImplementedRegister = Union[WrapperRegister, Type[WrapperRegister]]
 
 
-
-
-
 class DriverConfig:
     """
     For validate driver configuration, e.g., driver-config.csv
     """
+
     def __init__(self, csv_config: List[dict]):
         self.csv_config: List[dict] = csv_config
         """
@@ -179,7 +188,6 @@ class DriverConfig:
             'Units Details': 'No cat fact', 'Writable': 'TRUE', 'Starting Value': 'No cat fact', 'Type': 'str',
             'Notes': 'Cat fact extract from REST API'}]
         """
-
 
     @staticmethod
     def _validate_header(point_config: dict):
@@ -234,7 +242,8 @@ class WrapperInterface(BasicRevert, BaseInterface):
         super().__init__(**kwargs)
 
         self.point_map: Dict[str, ImplementedRegister] = {}  # {register.point_name: register}
-        self.register_types: List[ImplementedRegister] = []  # TODO: add sanity check for restister_types, e.g., count == register counts
+        self.register_types: List[
+            ImplementedRegister] = []  # TODO: add sanity check for restister_types, e.g., count == register counts
 
         self.csv_config = None  # TODO: try to get this value, potentially from def configure
         self.driver_config_in_json_config = None  # TODO: try to get this value, potentially from def configure
@@ -243,7 +252,8 @@ class WrapperInterface(BasicRevert, BaseInterface):
         # from *.csv configure file "driver_config": {...}
         # self.driver_config: dict = {}
 
-    def configure(self, driver_config_in_json_config: dict, csv_config: List[dict]):  # TODO: ask driver.py, BaseInterface.configure to update signature when evoking
+    def configure(self, driver_config_in_json_config: dict, csv_config: List[
+        dict]):  # TODO: ask driver.py, BaseInterface.configure to update signature when evoking
         """
         Used by driver.py
             def get_interface(self, driver_type, config_dict, config_string):
@@ -263,8 +273,8 @@ class WrapperInterface(BasicRevert, BaseInterface):
             'Notes': 'Cat fact extract from REST API'}]
 
         """
-        print("========================================== csv_config, ", csv_config)
-        print("========================================== driver_config_in_json_config, ", driver_config_in_json_config)
+        # print("========================================== csv_config, ", csv_config)
+        # print("========================================== driver_config_in_json_config, ", driver_config_in_json_config)
         self.csv_config = csv_config
         self.driver_config_in_json_config = driver_config_in_json_config
 
@@ -280,8 +290,8 @@ class WrapperInterface(BasicRevert, BaseInterface):
         """
 
     def parse_config(self, csv_config, driver_config_in_json_config):  # TODO: this configDict is from *.csv not .config
-        print("========================================== csv_config, ", csv_config)
-        print("========================================== driver_config_in_json_config, ", driver_config_in_json_config)
+        # print("========================================== csv_config, ", csv_config)
+        # print("========================================== driver_config_in_json_config, ", driver_config_in_json_config)
 
         # driver_config: DriverConfig = DriverConfig(csv_config)
         # valid_csv_config = DriverConfig(csv_config).key_validate()
@@ -292,49 +302,95 @@ class WrapperInterface(BasicRevert, BaseInterface):
 
         register_types: List[ImplementedRegister] = self.pass_register_types()
         valid_csv_config = csv_config  # TODO: Design the config check (No config check for now.)
-        for regDef, register_type_iter in zip(valid_csv_config, register_types):
+        for reg_def, register_type_iter in zip(valid_csv_config, register_types):
             # Skip lines that have no address yet. # TODO: understand why
-            if not regDef['Point Name']:
+            if not reg_def['Point Name']:
                 continue
 
-            point_name = regDef['Volttron Point Name']
-            type_name = regDef.get("Data Type", 'string')
+            point_name = reg_def['Volttron Point Name']
+            type_name = reg_def.get("Data Type", 'string')
             reg_type = type_mapping.get(type_name, str)
-            units = regDef['Units']
-            read_only = regDef['Writable'].lower() != 'true'  # TODO: watch out for this is opposite logic
+            units = reg_def['Units']
+            read_only = reg_def['Writable'].lower() != 'true'  # TODO: watch out for this is opposite logic
 
-            description = regDef.get('Notes', '')
+            description = reg_def.get('Notes', '')
 
-            # default_value = regDef.get("defaultvalue", 'sin').strip()
-            default_value = regDef.get("Default Value")  # TODO: redesign default value logic, e.g., beable to map to real python type
+            # default_value = reg_def.get("defaultvalue", 'sin').strip()
+            default_value = reg_def.get(
+                "Default Value")  # TODO: redesign default value logic, e.g., beable to map to real python type
             if not default_value:
                 default_value = None
-
-
 
             # register_type = FakeRegister if not point_name.startswith('Cat') else CatfactRegister  # TODO: change this
             register_type = register_type_iter  # TODO: Inconventional, document this.
 
-            print("========================================== point_name, ", point_name)
-            print("========================================== reg_type, ", reg_type)
-            print("========================================== units, ", units)
-            print("========================================== read_only, ", read_only)
-            print("========================================== default_value, ", default_value)
-            print("========================================== description, ", description)
+            # print("========================================== point_name, ", point_name)
+            # print("========================================== reg_type, ", reg_type)
+            # print("========================================== units, ", units)
+            # print("========================================== read_only, ", read_only)
+            # print("========================================== default_value, ", default_value)
+            # print("========================================== description, ", description)
+            print("========================================== reg_def, ", reg_def)
             # Note: the following is to init a register_type object, e.g., WrapperRegister
-            register = register_type(driver_config_in_json_config,
-                                     point_name,
-                                     reg_type,  # TODO: make it more clear in documentation
-                                     units,
-                                     read_only,
-                                     default_value=default_value,
-                                     description=description,
-                                     csv_config=csv_config)
+            try:
+                # register: WrapperRegister = register_type(driver_config=driver_config_in_json_config,
+                #                                           point_name=point_name,
+                #                                           data_type=reg_type,  # TODO: make it more clear in documentation
+                #                                           units=units,
+                #                                           read_only=read_only,
+                #                                           default_value=default_value,
+                #                                           description=description,
+                #                                           csv_config=csv_config,
+                #                                           reg_def=reg_def)
+
+                register: WrapperRegister = self.create_register(driver_config=driver_config_in_json_config,
+                                                                 point_name=point_name,
+                                                                 data_type=reg_type,
+                                                                 # TODO: make it more clear in documentation
+                                                                 units=units,
+                                                                 read_only=read_only,
+                                                                 default_value=default_value,
+                                                                 description=description,
+                                                                 csv_config=csv_config,
+                                                                 reg_def=reg_def,
+                                                                 register_type=register_type)
+            except Exception as e:
+                print(e)
 
             if default_value is not None:
                 self.set_default(point_name, register.value)
 
             self.insert_register(register)
+
+    def create_register(self, driver_config,
+                        point_name,
+                        data_type,
+                        units,
+                        read_only,
+                        default_value,
+                        description,
+                        csv_config,
+                        reg_def,
+                        register_type, *args, **kwargs) -> ImplementedRegister:
+        pass
+        """
+        Factory method to init (WrapperRegister) register object
+        
+        :param register_type: the class name of the to-be-created register, e.g., WrapperRegister
+        :param driver_config_in_json_config: json config file, 
+        :param csv_config: csv config file, Dict[str, str]
+        
+        """
+        register: WrapperRegister = register_type(driver_config=driver_config,
+                                                  point_name=point_name,
+                                                  data_type=data_type,  # TODO: make it more clear in documentation
+                                                  units=units,
+                                                  read_only=read_only,
+                                                  default_value=default_value,
+                                                  description=description,
+                                                  csv_config=csv_config,
+                                                  reg_def=reg_def)
+        return register
 
     def insert_register(self, register: WrapperRegister):
         """
@@ -354,7 +410,8 @@ class WrapperInterface(BasicRevert, BaseInterface):
 
         return register.value
 
-    def _set_point(self, point_name: str, value_to_set: RegisterValue):  # TODO: this method has some problem. Understand the logic: overall + example
+    def _set_point(self, point_name: str,
+                   value_to_set: RegisterValue):  # TODO: this method has some problem. Understand the logic: overall + example
         """
         Parameters
         ----------
@@ -379,7 +436,8 @@ class WrapperInterface(BasicRevert, BaseInterface):
 
     def _scrape_all(self) -> Dict[str, any]:
         result: Dict[str, RegisterValue] = {}  # Dict[register.point_name, register.value]
-        read_registers = self.get_registers_by_type(reg_type="byte", read_only=True)  # TODO: Parameterize the "byte" hard-code here
+        read_registers = self.get_registers_by_type(reg_type="byte",
+                                                    read_only=True)  # TODO: Parameterize the "byte" hard-code here
         write_registers = self.get_registers_by_type(reg_type="byte", read_only=False)
         all_registers: List[ImplementedRegister] = read_registers + write_registers
         for register in all_registers:
@@ -398,12 +456,8 @@ class WrapperInterface(BasicRevert, BaseInterface):
         try:
             return self.point_map[name]
         except KeyError:
-            raise DriverInterfaceError("Point not configured on device: "+name)
+            raise DriverInterfaceError("Point not configured on device: " + name)
 
 
 class DriverInterfaceError(Exception):
     pass
-
-
-
-
