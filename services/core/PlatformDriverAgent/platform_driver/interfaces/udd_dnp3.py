@@ -69,21 +69,34 @@ class UserDevelopRegisterDnp3(WrapperRegister):
         #         print("silly implementation")
         # the url will be in the config file
 
-        val = 1123
+        val = None
         try:
-            val = self._get_json_fromrestapi()
+            reg_def = self.reg_def
+            group = int(reg_def.get("Group"))
+            variation = int(reg_def.get("Variation"))
+            index = int(reg_def.get("Index"))
+            val = self._get_outstation_pt(self.master_application, group, variation, index)
             val = str(val)
-            print(f"!!!!!!!!!!!!!!!!!!!!{val}")
+            # print(f"!!!!!!!!!!!!!!!!!!!!{val}")
         except Exception as e:
             print(f"!!!!!!!!!!!!!!!!!!!!{e}")
+            _log.error(e)
 
         return val
 
-    def _get_json_fromrestapi(self) -> RegisterValue:
+    @staticmethod
+    def _get_outstation_pt(master_application, group, variation, index) -> RegisterValue:
+        """
+        Core logic to retrieve register value by polling a dnp3 outstation
+        Note: using def get_db_by_group_variation_index
+        Returns
+        -------
 
-        print("=====Look at here. I am evoked======.")
+        """
+
+        # print("=====Look at here. I am evoked======.")
         # print("self.csv_config", self.csv_config)
-        print("self.reg_def", self.reg_def)
+        # print("self.reg_def", self.reg_def)
 
         # master_application = MyMasterNew()
         # _log.debug('Initialization complete. Master Station in command loop.')
@@ -99,100 +112,26 @@ class UserDevelopRegisterDnp3(WrapperRegister):
         # e.g., {GroupVariation.Group1Var2: {0: False, 1: False, 2: False, 3: False, 4: False,}}
         # e.g., {GroupVariation.Group30Var6: None}
 
-        # response: json = requests.get(url)
-        # response_str: dict = response.json()
-
-        reg_def = self.reg_def
-        group = int(reg_def.get("Group"))
-        variation = int(reg_def.get("Variation"))
-        index = int(reg_def.get("Index"))
-
-        # gv_id = opendnp3.GroupVariationID(30, 6)
-        gv_id = opendnp3.GroupVariationID(group=group,
-                                          variation=variation)
-        scan_result = self.master_application.retrieve_val_by_gv_i(gv_id=gv_id, index=index)
-        print(f"///////////group {group}, variation {variation}, index {index}")
-        print(f"===important log: case7 retrieve_val_by_gv default ==== ", datetime.datetime.now(),
-              scan_result)
-        return_point_value = None
-        gv_cls: opendnp3.GroupVariation = parsing_gvid_to_gvcls(gv_id)
-        if scan_result.get(gv_cls):
-            return_point_value = scan_result.get(gv_cls).get(index)
-
-        # try:
-        #     scan_result = self.master_application.retrieve_val_by_gv(gv_id=opendnp3.GroupVariationID(group=group,
-        #                                                                                              variation=variation))
-        #     gv_id = opendnp3.GroupVariationID(group=group, variation=variation)
-        #     gv_cls: opendnp3.GroupVariation = parsing_gvid_to_gvcls(gv_id)
-        #     val_storage = self.master_application.soe_handler.gv_ts_ind_val_dict.get(gv_cls)
-        #     print(f"//////////val_storage {val_storage}, gv_cls, {gv_cls} {datetime.datetime.now()}")
-        #
-        # except Exception as e:
-        #     print(f"//////////e {e}, group {group}, variation {variation}")
-        # print(f"===important log: case7 retrieve_val_by_gv default ==== ", datetime.datetime.now(),
-        #       scan_result)
-        # # try:
-        # #     group = int(reg_def.get("Group"))
-        # # except Exception:
-        # #     print(Exception)
-        # #     # raise "Wrong Group value configuration"
-        # # try:
-        # #     variation = int(reg_def.get("Variation"))
-        # # except Exception:
-        # #     print(Exception)
-        # #     raise "Wrong Variation value configuration"
-        # # try:
-        # #     index = int(reg_def.get("Index"))
-        # # except Exception:
-        # #     print(Exception)
-        # #     raise "Wrong Index value configuration"
-        # #
-        # # # TODO: complete the group+variation family or do it in a smarter way
-        # #
-        # # try:
-        # #     scan_result = self.master_application.retrieve_val_by_gv(gv_id=opendnp3.GroupVariationID(group, variation))
-        # #     print(f"===important log: case7 retrieve_val_by_gv default ==== ", datetime.datetime.now(),
-        # #           scan_result)
-        # # except Exception:
-        # #     print(Exception)
-        # #     return None
-        #
+        # gv_id = opendnp3.GroupVariationID(group=group,
+        #                                   variation=variation)
+        # scan_result = master_application.retrieve_val_by_gv_i(gv_id=gv_id, index=index)
+        # # print(f"///////////group {group}, variation {variation}, index {index}")
+        # # print(f"===important log: case7 retrieve_val_by_gv default ==== ", datetime.datetime.now(),
+        # #       scan_result)
         # return_point_value = None
-        # if group == group and variation == variation:
-        #     gv = getattr(opendnp3.GroupVariation, f"Group{group}Var{variation}")
-        #     print("type(gv)", type(gv))
-        #     if scan_result.get(gv):
-        #         return_point_value = scan_result.get(gv).get(index)
-        #     print("====return_point_value", return_point_value, "type(return_point_value)", type(return_point_value),
-        #           "scan result", scan_result)
-        # #
-        # # # elif group == 30 and variation == 6:
-        # # #     return_point_value = scan_result.get(opendnp3.GroupVariation.Group30Var6).get(index)
-        # # # elif group == 1 and variation == 2:
-        # # #     return_point_value = scan_result.get(opendnp3.GroupVariation.Group1Var2).get(index)
-        # # # elif group == 40 and variation == 4:
-        # # #     return_point_value = scan_result.get(opendnp3.GroupVariation.Group40Var4).get(index)
-        # # # elif group == 10 and variation == 2:
-        # # #     return_point_value = scan_result.get(opendnp3.GroupVariation.Group10Var2).get(index)
-        # # else:
-        # #     _log.warning(f"Group{group}Variation{variation} is not found")
-        #
-        # # gv = getattr(opendnp3.GroupVariation, f"Group{group}Var{variation}")
-        # # print(f"=======test getattr, gv {gv}, group, {group}, var, {variation}")
-        # # print("====return_point_value", return_point_value, "scan result", scan_result)
+        # gv_cls: opendnp3.GroupVariation = parsing_gvid_to_gvcls(gv_id)
+        # if scan_result.get(gv_cls):
+        #     return_point_value = scan_result.get(gv_cls).get(index)
+
+        return_point_value = master_application.get_db_by_group_variation_index(group=group,
+                                                                                variation=variation,
+                                                                                index=index,
+                                                                                return_meta=False)
+        # print(f"===important log: case7 get_db_by_group_variation_index ====", datetime.datetime.now(),
+        #       return_point_value)
+        # return_point_value = result.get()
 
         return return_point_value
-
-    @staticmethod
-    def _save_parse_to_float(str_with_comma: str) -> float:
-        # Note: the input is in the form like "30,464.1101"
-        num: float
-        try:
-            num = float(str_with_comma.replace(',', ''))
-        except ValueError as e:
-            print(e)
-            num = np.nan
-        return num
 
 
 # TODO-developer: Your code here
@@ -208,7 +147,7 @@ try:
     class Interface(WrapperInterface):
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
-            self.master_application = MyMasterNew()
+            self.master_application = MyMasterNew(master_log_level=7)
             print("==============self.master_application = MyMasterNew()")
 
         def pass_register_types(self):
