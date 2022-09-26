@@ -20,6 +20,7 @@ from .dnp3_python.master_new import MyMasterNew
 from .dnp3_python.outstation_new import MyOutStationNew
 from .dnp3_python.master_utils import parsing_gvid_to_gvcls
 
+
 import datetime
 from time import sleep
 
@@ -69,7 +70,6 @@ class UserDevelopRegisterDnp3(WrapperRegister):
         #         print("silly implementation")
         # the url will be in the config file
 
-        val = None
         try:
             reg_def = self.reg_def
             group = int(reg_def.get("Group"))
@@ -77,12 +77,13 @@ class UserDevelopRegisterDnp3(WrapperRegister):
             index = int(reg_def.get("Index"))
             val = self._get_outstation_pt(self.master_application, group, variation, index)
             val = str(val)
-            # print(f"!!!!!!!!!!!!!!!!!!!!{val}")
-        except Exception as e:
-            print(f"!!!!!!!!!!!!!!!!!!!!{e}")
-            _log.error(e)
 
-        return val
+            return val
+        except Exception as e:
+            # print(f"!!!!!!!!!!!!!!!!!!!!{e}")
+            _log.error(e)
+            _log.warning("DNP3 driver (master) couldn't collect data from the outstation.")
+
 
     @staticmethod
     def _get_outstation_pt(master_application, group, variation, index) -> RegisterValue:
@@ -93,45 +94,53 @@ class UserDevelopRegisterDnp3(WrapperRegister):
         -------
 
         """
-
-        # print("=====Look at here. I am evoked======.")
-        # print("self.csv_config", self.csv_config)
-        # print("self.reg_def", self.reg_def)
-
-        # master_application = MyMasterNew()
-        # _log.debug('Initialization complete. Master Station in command loop.')
-
-        # scan_result = self.master_application.retrieve_val_by_gv(gv_id=opendnp3.GroupVariationID(30, 6))
-        # print(f"===important log: case7 retrieve_val_by_gv default ==== ", datetime.datetime.now(),
-        #       scan_result)
-
-        # scan_result: Dict[opendnp3.GroupVariation, Optional[Dict[int, RegisterValue]]] = \
-        #     self.master_application.retrieve_all_obj_by_gvids(gv_ids=[opendnp3.GroupVariationID(30, 6),
-        #                                                               opendnp3.GroupVariationID(1, 2)])
-        # e.g., {GroupVariation.Group30Var6: {0: 7.8, 1: 14.1, 2: 22.2, 3: 0.0, 4: 0.0, 5: 0.0, 6: 0.0, 7: 0.0}}
-        # e.g., {GroupVariation.Group1Var2: {0: False, 1: False, 2: False, 3: False, 4: False,}}
-        # e.g., {GroupVariation.Group30Var6: None}
-
-        # gv_id = opendnp3.GroupVariationID(group=group,
-        #                                   variation=variation)
-        # scan_result = master_application.retrieve_val_by_gv_i(gv_id=gv_id, index=index)
-        # # print(f"///////////group {group}, variation {variation}, index {index}")
-        # # print(f"===important log: case7 retrieve_val_by_gv default ==== ", datetime.datetime.now(),
-        # #       scan_result)
-        # return_point_value = None
-        # gv_cls: opendnp3.GroupVariation = parsing_gvid_to_gvcls(gv_id)
-        # if scan_result.get(gv_cls):
-        #     return_point_value = scan_result.get(gv_cls).get(index)
-
-        return_point_value = master_application.get_db_by_group_variation_index(group=group,
-                                                                                variation=variation,
-                                                                                index=index,
-                                                                                return_meta=False)
+        return_point_value = master_application.get_val_by_group_variation_index(group=group,
+                                                                                 variation=variation,
+                                                                                 index=index)
         # print(f"===important log: case7 get_db_by_group_variation_index ====", datetime.datetime.now(),
         #       return_point_value)
         # return_point_value = result.get()
 
         return return_point_value
+
+    # def set_register_value(self, value, **kwargs) -> Optional[RegisterValue]:
+    #     """
+    #     TODO: docstring
+    #     """
+    #     try:
+    #         reg_def = self.reg_def
+    #         group = int(reg_def.get("Group"))
+    #         variation = int(reg_def.get("Variation"))
+    #         index = int(reg_def.get("Index"))
+    #         val = self._set_outstation_pt(self.master_application, group, variation, index)
+    #         val = str(val)
+    #         # print(f"!!!!!!!!!!!!!!!!!!!!{val}")
+    #
+    #         print(f"=========I am a silly for set_point,")
+    #         return val
+    #     except Exception as e:
+    #         # print(f"!!!!!!!!!!!!!!!!!!!!{e}")
+    #         _log.error(e)
+    #         _log.warning("DNP3 driver (master) couldn't collect data from the outstation.")
+    #
+    # @staticmethod
+    # def _set_outstation_pt(master_application, group, variation, index):
+    #     """
+    #     # TODO: docstring
+    #     -------
+    #
+    #     """
+    #     # master_application.send_direct_operate_command(opendnp3.AnalogOutputDouble64(float(p_val)),
+    #     #                                                i,
+    #     #                                                )
+    #     gv_cls = opendnp3.GroupVariationID(group, variation)
+    #     gv_cls_name = gv_cls.getattr()
+    #     # TODO: improve the following type selector logic (only distinguish analog-float and binary for now)
+    #     print(f"=================gv_cls_name {gv_cls_name}")
+    #
+    #     return "sdfdsdi"
+
+
 
 
 # TODO-developer: Your code here
@@ -140,41 +149,48 @@ class UserDevelopRegisterDnp3(WrapperRegister):
 # register_types = [UserDevelopRegister, UserDevelopRegister]
 register_types: List[ImplementedRegister]
 register_types = [UserDevelopRegisterDnp3] * (4 + 4 + 3 + 3)
+
+
 # register_types = [UserDevelopRegisterDnp3] * (2)
 
 # boilerplate code. Don't touch me.
-try:
-    class Interface(WrapperInterface):
-        def __init__(self, *args, **kwargs):
-            super().__init__(*args, **kwargs)
-            self.master_application = MyMasterNew(master_log_level=7)
-            print("==============self.master_application = MyMasterNew()")
 
-        def pass_register_types(self):
-            return register_types
+class Interface(WrapperInterface):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.master_application = MyMasterNew(master_log_level=7)
+        self.master_application.start()
+        self.register_types = [UserDevelopRegisterDnp3] * (4 + 4 + 3 + 3)
 
-        def create_register(self, driver_config,
-                            point_name,
-                            data_type,
-                            units,
-                            read_only,
-                            default_value,
-                            description,
-                            csv_config,
-                            reg_def,
-                            register_type, *args, **kwargs):
-            register: WrapperRegister = register_type(driver_config=driver_config,
-                                                      point_name=point_name,
-                                                      data_type=data_type,  # TODO: make it more clear in documentation
-                                                      units=units,
-                                                      read_only=read_only,
-                                                      default_value=default_value,
-                                                      description=description,
-                                                      csv_config=csv_config,
-                                                      reg_def=reg_def,
-                                                      master_application=self.master_application
-                                                      )
-            return register
+    def pass_register_types(self):
+        return self.register_types
 
-except Exception as e:
-    print(e)
+    def create_register(self, driver_config,
+                        point_name,
+                        data_type,
+                        units,
+                        read_only,
+                        default_value,
+                        description,
+                        csv_config,
+                        reg_def,
+                        register_type, *args, **kwargs):
+        # register: WrapperRegister = register_type(
+        register = UserDevelopRegisterDnp3(
+                    driver_config=driver_config,
+                    point_name=point_name,
+                    data_type=data_type,  # TODO: make it more clear in documentation
+                    units=units,
+                    read_only=read_only,
+                    default_value=default_value,
+                    description=description,
+                    csv_config=csv_config,
+                    reg_def=reg_def,
+                    master_application=self.master_application
+        )
+        return register
+
+    # def _set_point(self, point_name: str,
+    #                value: RegisterValue):
+    #     # print(f"=========I am a silly set_point test, point_name {point_name},"
+    #     #       f"value {value}")
