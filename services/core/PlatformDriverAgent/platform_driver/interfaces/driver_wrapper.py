@@ -127,10 +127,9 @@ class WrapperRegister(BaseRegister):
             raise RuntimeError(  # TODO: Is RuntimeError necessary
                 "Trying to write to a point configured read only: " + self.point_name)  # TODO: clean up
         self._value = x
-        self.set_register_value()  # ad-hoc methods
 
     @abc.abstractmethod
-    def get_register_value(self, **kwargs) -> any:
+    def get_register_value(self, **kwargs) -> RegisterValue:
         """
         Override this to get register value
         Examples 1 retrieve:
@@ -145,7 +144,7 @@ class WrapperRegister(BaseRegister):
         """
 
     @abc.abstractmethod
-    def set_register_value(self, **kwargs) -> None:  # TODO: need an example/redesign for this
+    def set_register_value(self, value, **kwargs) -> Optional[RegisterValue]:  # TODO: need an example/redesign for this
         pass
     #     """
     #     Override this to set register value. (Only for writable==True/read_only==False)
@@ -405,13 +404,18 @@ class WrapperInterface(BasicRevert, BaseInterface):
         register_type = register.get_register_type()
         self.registers[register_type].append(register)
 
-    def get_point(self, point_name, **kwargs):
+    def get_point(self, point_name, **kwargs) -> RegisterValue:
         register: WrapperRegister = self.get_register_by_name(point_name)
+        # val: RegisterValue = register.get_register_value()
 
         return register.value
+        # return val
 
-    def _set_point(self, point_name: str,
-                   value_to_set: RegisterValue):  # TODO: this method has some problem. Understand the logic: overall + example
+
+    # def _set_point(self, point_name: str,
+    #                value_to_set: RegisterValue):  # TODO: this method has some problem. Understand the logic: overall + example
+
+    def _set_point(self, point_name, value, **kwargs):
         """
         Parameters
         ----------
@@ -422,17 +426,22 @@ class WrapperInterface(BasicRevert, BaseInterface):
         -------
 
         """
+        value_to_set = value
         register: ImplementedRegister = self.get_register_by_name(point_name)
         # Note: leave register method to verify, e.g., check writability.
-        register.value(value_to_set)
-        value_response: RegisterValue = register.value
-        # TODO: redesign the try except logic
-        try:
-            assert (value_response == value_to_set)
-        except AssertionError as e:
-            print(e)
-            raise "Set value failed"
-        return value_response
+        # register.value(value_to_set)
+        # value_response: RegisterValue = register.value
+
+        # register.set_register_value(value=value_to_set)
+        # # verify
+        # value_response = self.get_point(point_name=point_name)
+        # # TODO: redesign the try except logic
+        # try:
+        #     assert (value_response == value_to_set)
+        # except AssertionError as e:
+        #     print(e)
+        #     raise "Set value failed"
+        # return value_response
 
     def _scrape_all(self) -> Dict[str, any]:
         result: Dict[str, RegisterValue] = {}  # Dict[register.point_name, register.value]
