@@ -20,7 +20,6 @@ from .dnp3_python.master_new import MyMasterNew
 from .dnp3_python.outstation_new import MyOutStationNew
 from .dnp3_python.master_utils import parsing_gvid_to_gvcls
 
-
 import datetime
 from time import sleep
 
@@ -38,22 +37,13 @@ _log.setLevel(logging.ERROR)
 # TODO-developer: Your code here
 # Change the classname "UserDevelopRegister" as needed
 class UserDevelopRegisterDnp3(WrapperRegister):
-    # boilerplate code. Don't touch me.
-    # def __init__(self,
-    #              driver_config: dict,
-    #              point_name: str,
-    #              data_type: RegisterValue,
-    #              units: str, read_only: bool,
-    #              default_value: Optional[RegisterValue] = None,
-    #              description: str = "",
-    #              csv_config=csv_config):  # re-define for redability
-    #     super().__init__(driver_config, point_name, data_type, units, default_value, description)
-    def __init__(self, *args, **kwargs):
-        # self.master_application = MyMasterNew()  # TODO: verify if long-live master_application will block connection
-        # self.reg_def = kwargs['reg_def']
+    # TODO-developer: Your code here
+    def __init__(self, master_application, reg_def,*args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.master_application = kwargs['master_application']
-        self.reg_def = kwargs['reg_def']
+        # self.master_application = kwargs['master_application']
+        # self.reg_def = kwargs['reg_def']
+        self.master_application = master_application
+        self.reg_def = reg_def
 
     def get_register_value(self) -> RegisterValue:
         # TODO-developer: Your code here
@@ -76,14 +66,13 @@ class UserDevelopRegisterDnp3(WrapperRegister):
             variation = int(reg_def.get("Variation"))
             index = int(reg_def.get("Index"))
             val = self._get_outstation_pt(self.master_application, group, variation, index)
-            val = str(val)
+            # val = str(val)
 
             return val
         except Exception as e:
             # print(f"!!!!!!!!!!!!!!!!!!!!{e}")
             _log.error(e)
             _log.warning("DNP3 driver (master) couldn't collect data from the outstation.")
-
 
     @staticmethod
     def _get_outstation_pt(master_application, group, variation, index) -> RegisterValue:
@@ -97,10 +86,6 @@ class UserDevelopRegisterDnp3(WrapperRegister):
         return_point_value = master_application.get_val_by_group_variation_index(group=group,
                                                                                  variation=variation,
                                                                                  index=index)
-        # print(f"===important log: case7 get_db_by_group_variation_index ====", datetime.datetime.now(),
-        #       return_point_value)
-        # return_point_value = result.get()
-
         return return_point_value
 
     def set_register_value(self, value, **kwargs) -> Optional[RegisterValue]:
@@ -112,58 +97,71 @@ class UserDevelopRegisterDnp3(WrapperRegister):
             group = int(reg_def.get("Group"))
             variation = int(reg_def.get("Variation"))
             index = int(reg_def.get("Index"))
-            val = self._set_outstation_pt(self.master_application, group, variation, index)
-            val = str(val)
-            # print(f"!!!!!!!!!!!!!!!!!!!!{val}")
 
-            print(f"=========I am a silly for set_point,")
+            val: Optional[RegisterValue]
+            self._set_outstation_pt(self.master_application, group, variation, index, set_value=value)
+            val = None
+
             return val
         except Exception as e:
             # print(f"!!!!!!!!!!!!!!!!!!!!{e}")
             _log.error(e)
-            _log.warning("DNP3 driver (master) couldn't collect data from the outstation.")
+            _log.warning("DNP3 driver (master) couldn't set value for the outstation.")
 
     @staticmethod
-    def _set_outstation_pt(master_application, group, variation, index):
+    def _set_outstation_pt(master_application, group, variation, index, set_value) -> None:
         """
-        # TODO: docstring
+        Core logic to send point operate command to outstation
+        Note: using def send_direct_point_command
+        Returns None
         -------
 
         """
-        # master_application.send_direct_operate_command(opendnp3.AnalogOutputDouble64(float(p_val)),
-        #                                                i,
-        #                                                )
-        gv_cls = opendnp3.GroupVariationID(group, variation)
-        gv_cls_name = gv_cls.getattr()
-        # TODO: improve the following type selector logic (only distinguish analog-float and binary for now)
-        print(f"=================gv_cls_name {gv_cls_name}")
+        master_application.send_direct_point_command(group=group, variation=variation, index=index,
+                                                     val_to_set=set_value)
 
-        return "sdfdsdi"
-
-
-
-
-# TODO-developer: Your code here
-# fill in register_types with register types accordingly
-# EXAMPLE:
-# register_types = [UserDevelopRegister, UserDevelopRegister]
-register_types: List[ImplementedRegister]
-register_types = [UserDevelopRegisterDnp3] * (4 + 4 + 3 + 3)
-
-
-# register_types = [UserDevelopRegisterDnp3] * (2)
-
-# boilerplate code. Don't touch me.
 
 class Interface(WrapperInterface):
+    # TODO-developer: Your code here
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.master_application = MyMasterNew(master_log_level=7)
-        self.master_application.start()
-        self.register_types = [UserDevelopRegisterDnp3] * (4 + 4 + 3 + 3)
+        self.master_application = None
 
+    # TODO-developer: Your code here
+    # Register type configuration
     def pass_register_types(self):
-        return self.register_types
+        return [UserDevelopRegisterDnp3] * (4 + 4 + 3 + 3)
+
+    @staticmethod
+    def create_master_station(driver_config: dict):
+        """
+        init a master station and later pass to registers
+
+        Note: rely on XX.config json file convention, e.g.,
+        "driver_config":
+            {"master_ip": "0.0.0.0",
+            "outstation_ip": "127.0.0.1",
+            "master_id": 2,
+            "outstation_id": 1,
+            "port":  20000},
+
+        Returns
+        -------
+
+        """
+        # driver_config: dict = self.driver_config
+        print(f"=============driver_config {driver_config}")
+
+        master_application = MyMasterNew(
+            masterstation_ip_str=driver_config.get("master_ip"),
+            outstation_ip_str=driver_config.get("outstation_ip"),
+            port=driver_config.get("port"),
+            masterstation_id_int=driver_config.get("master_id"),
+            outstation_id_int=driver_config.get("outstation_id"),
+        )
+        # master_application.start()
+        # self.master_application = master_application
+        return master_application
 
     def create_register(self, driver_config,
                         point_name,
@@ -175,22 +173,28 @@ class Interface(WrapperInterface):
                         csv_config,
                         reg_def,
                         register_type, *args, **kwargs):
-        # register: WrapperRegister = register_type(
+        def get_master_station():
+            # Note: this a closure, since parameter driver_config is required.
+            # (at current state) only create_register workflow should use it.
+            if self.master_application:
+                return self.master_application
+            else:
+                self.master_application = self.create_master_station(driver_config)
+                return self.master_application
+
+        master = get_master_station()
+        master.start()
+
         register = UserDevelopRegisterDnp3(
-                    driver_config=driver_config,
-                    point_name=point_name,
-                    data_type=data_type,  # TODO: make it more clear in documentation
-                    units=units,
-                    read_only=read_only,
-                    default_value=default_value,
-                    description=description,
-                    csv_config=csv_config,
-                    reg_def=reg_def,
-                    master_application=self.master_application
+            driver_config=driver_config,
+            point_name=point_name,
+            data_type=data_type,  # TODO: make it more clear in documentation
+            units=units,
+            read_only=read_only,
+            default_value=default_value,
+            description=description,
+            csv_config=csv_config,
+            reg_def=reg_def,
+            master_application=master
         )
         return register
-
-    def _set_point(self, point_name: str,
-                   value: RegisterValue):
-        # print(f"=========I am a silly set_point test, point_name {point_name},"
-        #       f"value {value}")

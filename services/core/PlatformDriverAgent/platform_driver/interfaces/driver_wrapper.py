@@ -432,16 +432,21 @@ class WrapperInterface(BasicRevert, BaseInterface):
         # register.value(value_to_set)
         # value_response: RegisterValue = register.value
 
-        # register.set_register_value(value=value_to_set)
-        # # verify
-        # value_response = self.get_point(point_name=point_name)
-        # # TODO: redesign the try except logic
-        # try:
-        #     assert (value_response == value_to_set)
-        # except AssertionError as e:
-        #     print(e)
-        #     raise "Set value failed"
-        # return value_response
+        set_pt_response = register.set_register_value(value=value_to_set)
+        # verify with get_point
+        get_pt_response = self.get_point(point_name=point_name)
+
+        success_flag_strict = (get_pt_response == value_to_set)
+        success_flag_relax = (str(get_pt_response) == str(value_to_set))
+        success_flag = success_flag_relax
+
+        response = {"success_flag": success_flag,
+                    "value_to_set": value_to_set,
+                    "set_pt_response": set_pt_response,
+                    "get_pt_response": get_pt_response}
+        if not success_flag:
+            _log.warning(f"Set value failed, {response}")
+        return response
 
     def _scrape_all(self) -> Dict[str, any]:
         result: Dict[str, RegisterValue] = {}  # Dict[register.point_name, register.value]
