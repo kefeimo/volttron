@@ -15,13 +15,6 @@ import sys
 
 from datetime import datetime
 
-from pydnp3 import opendnp3
-from .dnp3_python.master_new import MyMasterNew
-from .dnp3_python.outstation_new import MyOutStationNew
-# from .dnp3_python.station_utils import parsing_gvid_to_gvcls
-
-import datetime
-from time import sleep
 
 stdout_stream = logging.StreamHandler(sys.stdout)
 stdout_stream.setFormatter(logging.Formatter('%(asctime)s\t%(name)s\t%(levelname)s\t%(message)s'))
@@ -32,6 +25,15 @@ _log.addHandler(stdout_stream)
 _log.setLevel(logging.DEBUG)
 _log.setLevel(logging.WARNING)
 _log.setLevel(logging.ERROR)
+
+
+try:
+    from pydnp3 import opendnp3
+    from .dnp3_python.master_new import MyMasterNew
+    # from .dnp3_python.outstation_new import MyOutStationNew
+    # from .dnp3_python.station_utils import parsing_gvid_to_gvcls
+except ImportError as e:
+    _log.error(e)
 
 
 # TODO-developer: Your code here
