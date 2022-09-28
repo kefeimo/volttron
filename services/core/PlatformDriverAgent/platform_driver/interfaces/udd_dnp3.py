@@ -18,7 +18,7 @@ from datetime import datetime
 from pydnp3 import opendnp3
 from .dnp3_python.master_new import MyMasterNew
 from .dnp3_python.outstation_new import MyOutStationNew
-from .dnp3_python.master_utils import parsing_gvid_to_gvcls
+# from .dnp3_python.station_utils import parsing_gvid_to_gvcls
 
 import datetime
 from time import sleep
