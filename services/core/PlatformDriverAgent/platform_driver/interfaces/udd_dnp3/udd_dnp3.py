@@ -1,5 +1,7 @@
-from platform_driver.interfaces.driver_wrapper import WrapperInterface, WrapperRegister
-from platform_driver.interfaces.driver_wrapper import ImplementedRegister, RegisterValue
+# from platform_driver.interfaces.driver_wrapper import WrapperInterface, WrapperRegister
+# from platform_driver.interfaces.driver_wrapper import ImplementedRegister, RegisterValue
+from .driver_wrapper import WrapperInterface, WrapperRegister
+from .driver_wrapper import ImplementedRegister, RegisterValue
 from typing import List, Optional, Dict
 import numpy as np
 import random
@@ -29,7 +31,8 @@ _log.setLevel(logging.ERROR)
 
 try:
     from pydnp3 import opendnp3
-    from .dnp3_python.master_new import MyMasterNew
+    # from .dnp3_python.master_new import MyMasterNew
+    from .pydnp3.src.dnp3_python.master_new import MyMasterNew
     # from .dnp3_python.outstation_new import MyOutStationNew
 except ImportError as e:
     _log.error(e)
