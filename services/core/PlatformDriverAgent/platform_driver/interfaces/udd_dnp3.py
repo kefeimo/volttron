@@ -31,7 +31,6 @@ try:
     from pydnp3 import opendnp3
     from .dnp3_python.master_new import MyMasterNew
     # from .dnp3_python.outstation_new import MyOutStationNew
-    # from .dnp3_python.station_utils import parsing_gvid_to_gvcls
 except ImportError as e:
     _log.error(e)
 
