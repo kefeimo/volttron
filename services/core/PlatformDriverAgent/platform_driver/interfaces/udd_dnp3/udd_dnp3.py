@@ -42,7 +42,7 @@ except ImportError as e:
 # Change the classname "UserDevelopRegister" as needed
 class UserDevelopRegisterDnp3(WrapperRegister):
     # TODO-developer: Your code here
-    def __init__(self, master_application, reg_def,*args, **kwargs):
+    def __init__(self, master_application, reg_def, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # self.master_application = kwargs['master_application']
         # self.reg_def = kwargs['reg_def']
