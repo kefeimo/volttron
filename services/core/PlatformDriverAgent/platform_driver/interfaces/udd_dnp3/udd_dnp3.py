@@ -133,11 +133,17 @@ class Interface(WrapperInterface):
 
     # TODO-developer: Your code here
     # Register type configuration
-    def pass_register_types(self):
-        return [UserDevelopRegisterDnp3] * (4 + 4 + 3 + 3)
+    @staticmethod
+    def pass_register_types(csv_config: dict, driver_config_in_json_config: List[dict],
+                            register_type_list: List[ImplementedRegister] = None):
+        """
+        Note: based on the config.csv file.
+        By default, assuming register points are dnp3-register type + (optional) heartbeat register
+        """
+        return [UserDevelopRegisterDnp3] * len(csv_config)
 
     @staticmethod
-    def create_master_station(driver_config: dict):
+    def _create_master_station(driver_config: dict):
         """
         init a master station and later pass to registers
 
@@ -154,7 +160,7 @@ class Interface(WrapperInterface):
 
         """
         # driver_config: dict = self.driver_config
-        print(f"=============driver_config {driver_config}")
+        # print(f"=============driver_config {driver_config}")
 
         master_application = MyMasterNew(
             masterstation_ip_str=driver_config.get("master_ip"),
@@ -183,7 +189,7 @@ class Interface(WrapperInterface):
             if self.master_application:
                 return self.master_application
             else:
-                self.master_application = self.create_master_station(driver_config)
+                self.master_application = self._create_master_station(driver_config)
                 return self.master_application
 
         master = get_master_station()

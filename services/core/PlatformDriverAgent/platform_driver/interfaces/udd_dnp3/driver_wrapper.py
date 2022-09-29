@@ -244,15 +244,14 @@ class WrapperInterface(BasicRevert, BaseInterface):
         self.register_types: List[
             ImplementedRegister] = []  # TODO: add sanity check for restister_types, e.g., count == register counts
 
-        self.csv_config = None  # TODO: try to get this value, potentially from def configure
+        self.csv_config = None  # TODO: try to get this value, potentially from def configure. get inspiration from modbus_tk testing
         self.driver_config_in_json_config = None  # TODO: try to get this value, potentially from def configure
 
         # TODO: clean up this public interface
         # from *.csv configure file "driver_config": {...}
         # self.driver_config: dict = {}
 
-    def configure(self, driver_config_in_json_config: dict, csv_config: List[
-        dict]):  # TODO: ask driver.py, BaseInterface.configure to update signature when evoking
+    def configure(self, driver_config_in_json_config: dict, csv_config: List[dict]):  # TODO: ask driver.py, BaseInterface.configure to update signature when evoking
         """
         Used by driver.py
             def get_interface(self, driver_type, config_dict, config_string):
@@ -260,9 +259,9 @@ class WrapperInterface(BasicRevert, BaseInterface):
 
         Parameters  # TODO: follow BaseInterface.configure signatures. But the names are wrong.
         ----------
-        config_dict: associated with `driver_config` in driver-config.config (json-like file)
+        driver_config_in_json_config: associated with `driver_config` in driver-config.config (json-like file)
                     user inputs are put here, e.g., IP address, url, etc.
-        registry_config_str: associated with the whole driver-config.csv file
+        csv_config: associated with the whole driver-config.csv file
             Examples:
             [{'Point Name': 'Heartbeat', 'Volttron Point Name': 'Heartbeat', 'Units': 'On/Off',
             'Units Details': 'On/Off', 'Writable': 'TRUE', 'Starting Value': '0', 'Type': 'boolean',
@@ -281,12 +280,32 @@ class WrapperInterface(BasicRevert, BaseInterface):
         # self.config_check
         self.parse_config(csv_config, driver_config_in_json_config)
 
+    @staticmethod
     @abc.abstractmethod
-    def pass_register_types(self) -> List[ImplementedRegister]:
+    def pass_register_types(csv_config: dict, driver_config_in_json_config: List[dict],
+                            register_type_list: List[ImplementedRegister] = None) -> List[ImplementedRegister]:
         """
         For ingesting the register types list
         Will be used by concrete Interface class inherit this template
+
+        Parameters
+        ----------
+        driver_config_in_json_config: associated with `driver_config` in driver-config.config (json-like file)
+                    user inputs are put here, e.g., IP address, url, etc.
+        csv_config: associated with the whole driver-config.csv file
+            Examples:
+            [{'Point Name': 'Heartbeat', 'Volttron Point Name': 'Heartbeat', 'Units': 'On/Off',
+            'Units Details': 'On/Off', 'Writable': 'TRUE', 'Starting Value': '0', 'Type': 'boolean',
+            'Notes': 'Point for heartbeat toggle'},
+            {'Point Name': 'Catfact', 'Volttron Point Name': 'Catfact', 'Units': 'No cat fact',
+            'Units Details': 'No cat fact', 'Writable': 'TRUE', 'Starting Value': 'No cat fact', 'Type': 'str',
+            'Notes': 'Cat fact extract from REST API'}]
+        register_type_list:
+            Example:
+            [RestAPIRegister, RestAPIRegister, RestAPIRegister, RandomBoolRegister]
         """
+        pass
+        return register_type_list
 
     def parse_config(self, csv_config, driver_config_in_json_config):  # TODO: this configDict is from *.csv not .config
         # print("========================================== csv_config, ", csv_config)
@@ -299,7 +318,7 @@ class WrapperInterface(BasicRevert, BaseInterface):
         if csv_config is None:  # TODO: leave it now. Later for central data check
             return
 
-        register_types: List[ImplementedRegister] = self.pass_register_types()
+        register_types: List[ImplementedRegister] = self.pass_register_types(csv_config, driver_config_in_json_config)
         valid_csv_config = csv_config  # TODO: Design the config check (No config check for now.)
         for reg_def, register_type_iter in zip(valid_csv_config, register_types):
             # Skip lines that have no address yet. # TODO: understand why
