@@ -20,7 +20,7 @@ from services.core.PlatformDriverAgent.platform_driver.interfaces. \
     udd_dnp3.pydnp3.src.dnp3_python.master_new import MyMasterNew
 from services.core.PlatformDriverAgent.platform_driver.interfaces. \
     udd_dnp3.udd_dnp3 import UserDevelopRegisterDnp3
-from pydnp3 import  opendnp3
+from pydnp3 import opendnp3
 
 
 class TestDummy:
@@ -46,31 +46,6 @@ class TestDummy:
 #     "publish_depth_first_all": True,
 #     "heart_beat_point": "random_bool"
 # }
-
-@pytest.fixture
-def driver_config_in_json_config():
-    """
-    associated with `driver_config` in driver-config.config (json-like file)
-                    user inputs are put here, e.g., IP address, url, etc.
-    """
-    json_path = Path("./testing_data/udd-Dnp3.config")
-    with open(json_path) as json_f:
-        driver_config = json.load(json_f)
-    k = "driver_config"
-    return {k: driver_config.get(k)}
-
-
-@pytest.fixture
-def csv_config():
-    """
-    associated with the whole driver-config.csv file
-    """
-    csv_path = Path("./testing_data/udd-Dnp3.csv")
-    with open(csv_path) as f:
-        reader = csv.DictReader(f, delimiter=',')
-        csv_config = [row for row in reader]
-
-    return csv_config
 
 
 @pytest.fixture(scope="module")
@@ -99,7 +74,9 @@ def master_app():
 
     master_appl = MyMasterNew(stale_if_longer_than=0.1)
     master_appl.start()
-    # time.sleep(3)
+    # Note: add delay to prevent conflict
+    # (there is a delay when master shutdown. And all master shares the same config)
+    time.sleep(1)
     yield master_appl
     # clean-up
     master_appl.shutdown()
@@ -185,13 +162,53 @@ def dnp3_inherit_init_args(csv_config, driver_config_in_json_config):
     return args
 
 
+@pytest.fixture
+def driver_config_in_json_config():
+    """
+    associated with `driver_config` in driver-config.config (json-like file)
+                    user inputs are put here, e.g., IP address, url, etc.
+    """
+    json_path = Path("./testing_data/udd-Dnp3.config")
+    with open(json_path) as json_f:
+        driver_config = json.load(json_f)
+    k = "driver_config"
+    return {k: driver_config.get(k)}
+
+
+@pytest.fixture
+def csv_config():
+    """
+    associated with the whole driver-config.csv file
+    """
+    csv_path = Path("./testing_data/udd-Dnp3.csv")
+    with open(csv_path) as f:
+        reader = csv.DictReader(f, delimiter=',')
+        csv_config = [row for row in reader]
+
+    return csv_config
+
+
+@pytest.fixture
+def reg_def_dummy():
+    """
+    register definition, row of csv config file
+    """
+    # reg_def = {'Point Name': 'AnalogInput_index0', 'Volttron Point Name': 'AnalogInput_index0',
+    #            'Group': '30', 'Variation': '6', 'Index': '0', 'Scaling': '1', 'Units': 'NA',
+    #            'Writable': 'FALSE', 'Notes': 'Double Analogue input without status'}
+    reg_def = {'Point Name': 'pn', 'Volttron Point Name': 'pn',
+               'Group': 'int', 'Variation': 'int', 'Index': 'int', 'Scaling': '1', 'Units': 'NA',
+               'Writable': 'NA', 'Notes': ''}
+    return reg_def
+
+
 class TestDNPRegister:
     """
     Tests for UserDevelopRegisterDnp3 class
 
-   init
+    init
 
-   get_register_value
+    get_register_value
         analog input float
         analog input int
         binary input
@@ -204,209 +221,206 @@ class TestDNPRegister:
                                     **dnp3_inherit_init_args
                                     )
 
-    def test_get_register_value_analog_float(self, outstation_app, master_app, csv_config, dnp3_inherit_init_args):
+    def test_get_register_value_analog_float(self, outstation_app, master_app, csv_config,
+                                             dnp3_inherit_init_args, reg_def_dummy):
 
         # dummy test variable
-        analog_input_val = [1.2454, 33453.23, 45.21]
+        analog_input_val = [345, 1123, 98] + [random.randint(1, 100) for i in range(3)]
+
+        # dummy reg_def (csv config row)
+        # Note: group = 30, variation = 6 is AnalogInputFloat
+        reg_def = reg_def_dummy
+        reg_defs = []
+        for i in range(len(analog_input_val)):
+            reg_def["Group"] = "30"
+            reg_def["Variation"] = "6"
+            reg_def["Index"] = str(i)
+            reg_defs.append(reg_def.copy())  # Note: Python gotcha, mutable don't evaluate til the end of the loop.
+
+        # outstation update values
         for i, val_update in enumerate(analog_input_val):
             outstation_app.apply_update(opendnp3.Analog(value=val_update), index=i)
 
-        # Note: make sure Group, Variation, Index in config are consistent with desired testing dummy
-        # Note: group=30, variation=6 is AnalogInputFloat
-        # Note: reg_def = csv_config[i], structure example
-        # reg_def = {'Point Name': 'AnalogInput_index0', 'Volttron Point Name': 'AnalogInput_index0',
-        #            'Group': '30', 'Variation': '6', 'Index': '0', 'Scaling': '1', 'Units': 'NA',
-        #            'Writable': 'FALSE', 'Notes': 'Double Analogue input without status'}
-
-        # verify
-        for i, val_update in enumerate(analog_input_val):
-            reg_def = csv_config[i]
+        # verify: driver read value
+        for i, (val_update, csv_row) in enumerate(zip(analog_input_val, reg_defs)):
+            # print(f"====== reg_defs {reg_defs}, analog_input_val {analog_input_val}")
             dnp3_register = UserDevelopRegisterDnp3(master_application=master_app,
-                                                    reg_def=reg_def,
+                                                    reg_def=csv_row,
                                                     **dnp3_inherit_init_args
                                                     )
             val_get = dnp3_register.get_register_value()
             # print("===========val_get, val_update", val_get, val_update)
             assert val_get == val_update
 
-    def test_get_register_value_analog_float_random(self, outstation_app, master_app, csv_config, dnp3_inherit_init_args):
+    def test_get_register_value_analog_int(self, outstation_app, master_app, csv_config,
+                                           dnp3_inherit_init_args, reg_def_dummy):
 
         # dummy test variable
-        analog_input_val = [random.random() for i in range(3)]
+        analog_input_val = [345, 1123, 98] + [random.randint(1, 100) for i in range(3)]
+
+        # dummy reg_def (csv config row)
+        # Note: group = 30, variation = 1 is AnalogInputInt32
+        reg_def = reg_def_dummy
+        reg_defs = []
+        for i in range(len(analog_input_val)):
+            reg_def["Group"] = "30"
+            reg_def["Variation"] = "1"
+            reg_def["Index"] = str(i)
+            reg_defs.append(reg_def.copy())  # Note: Python gotcha, mutable don't evaluate til the end of the loop.
+
+        # outstation update values
         for i, val_update in enumerate(analog_input_val):
             outstation_app.apply_update(opendnp3.Analog(value=val_update), index=i)
 
-        # Note: make sure Group, Variation, Index in config are consistent with desired testing dummy
-        # Note: group=30, variation=6 is AnalogInputFloat
-        # Note: reg_def = csv_config[i], structure example
-        # reg_def = {'Point Name': 'AnalogInput_index0', 'Volttron Point Name': 'AnalogInput_index0',
-        #            'Group': '30', 'Variation': '6', 'Index': '0', 'Scaling': '1', 'Units': 'NA',
-        #            'Writable': 'FALSE', 'Notes': 'Double Analogue input without status'}
-
-        # verify
-        for i, val_update in enumerate(analog_input_val):
-            reg_def = csv_config[i]
+        # verify: driver read value
+        for i, (val_update, csv_row) in enumerate(zip(analog_input_val, reg_defs)):
+            # print(f"====== reg_defs {reg_defs}, analog_input_val {analog_input_val}")
             dnp3_register = UserDevelopRegisterDnp3(master_application=master_app,
-                                                    reg_def=reg_def,
+                                                    reg_def=csv_row,
                                                     **dnp3_inherit_init_args
                                                     )
             val_get = dnp3_register.get_register_value()
             # print("===========val_get, val_update", val_get, val_update)
             assert val_get == val_update
 
-    def test_get_register_value_analog_int(self, outstation_app, master_app, csv_config, dnp3_inherit_init_args):
+    def test_get_register_value_binary(self, outstation_app, master_app, csv_config,
+                                       dnp3_inherit_init_args, reg_def_dummy):
 
         # dummy test variable
-        analog_input_val = [345, 1123, 98]
-        for i, val_update in enumerate(analog_input_val):
-            outstation_app.apply_update(opendnp3.Analog(value=val_update), index=i)
+        binary_input_val = [True, False, True] + [random.choice([True, False]) for i in range(3)]
 
-        # Note: make sure Group, Variation, Index in config are consistent with desired testing dummy
-        # Note: group=30, variation=1 is AnalogInputInt32
-        # Note: reg_def = csv_config[i], structure example
-        # reg_def = {'Point Name': 'AnalogInput_index0', 'Volttron Point Name': 'AnalogInput_index0',
-        #            'Group': '30', 'Variation': '6', 'Index': '0', 'Scaling': '1', 'Units': 'NA',
-        #            'Writable': 'FALSE', 'Notes': 'Double Analogue input without status'}
+        # dummy reg_def (csv config row)
+        # Note: group = 1, variation = 2 is BinaryInput
+        reg_def = reg_def_dummy
+        reg_defs = []
+        for i in range(len(binary_input_val)):
+            reg_def["Group"] = "1"
+            reg_def["Variation"] = "2"
+            reg_def["Index"] = str(i)
+            reg_defs.append(reg_def.copy())  # Note: Python gotcha, mutable don't evaluate til the end of the loop.
 
-        # verify
-        for i, val_update in enumerate(analog_input_val):
-            # reg_def = csv_config[i]
-            reg_def = {'Point Name': f'AnalogInput_index{i}', 'Volttron Point Name': f'AnalogInput_index{i}',
-                       'Group': '30', 'Variation': '1', 'Index': f"{i}", 'Scaling': '1', 'Units': 'NA',
-                       'Writable': 'FALSE', 'Notes': ''}
-            dnp3_register = UserDevelopRegisterDnp3(master_application=master_app,
-                                                    reg_def=reg_def,
-                                                    **dnp3_inherit_init_args
-                                                    )
-            val_get = dnp3_register.get_register_value()
-            # print("===========val_get, val_update", val_get, val_update)
-            assert val_get == val_update
-
-    def test_get_register_value_analog_int_random(self, outstation_app, master_app, csv_config, dnp3_inherit_init_args):
-
-        # dummy test variable
-        analog_input_val = [random.randint(1, 100) for i in range(3)]
-        for i, val_update in enumerate(analog_input_val):
-            outstation_app.apply_update(opendnp3.Analog(value=val_update), index=i)
-
-        # Note: make sure Group, Variation, Index in config are consistent with desired testing dummy
-        # Note: group=30, variation=1 is AnalogInputInt32
-        # Note: reg_def = csv_config[i], structure example
-        # reg_def = {'Point Name': 'AnalogInput_index0', 'Volttron Point Name': 'AnalogInput_index0',
-        #            'Group': '30', 'Variation': '6', 'Index': '0', 'Scaling': '1', 'Units': 'NA',
-        #            'Writable': 'FALSE', 'Notes': 'Double Analogue input without status'}
-
-        # verify
-        for i, val_update in enumerate(analog_input_val):
-            # reg_def = csv_config[i]
-            reg_def = {'Point Name': f'AnalogInput_index{i}', 'Volttron Point Name': f'AnalogInput_index{i}',
-                       'Group': '30', 'Variation': '1', 'Index': f"{i}", 'Scaling': '1', 'Units': 'NA',
-                       'Writable': 'FALSE', 'Notes': ''}
-            dnp3_register = UserDevelopRegisterDnp3(master_application=master_app,
-                                                    reg_def=reg_def,
-                                                    **dnp3_inherit_init_args
-                                                    )
-            val_get = dnp3_register.get_register_value()
-            # print("===========val_get, val_update", val_get, val_update)
-            assert val_get == val_update
-
-    def test_get_register_value_binary_int(self, outstation_app, master_app, csv_config, dnp3_inherit_init_args):
-
-        # dummy test variable
-        binary_input_val = [True, False, True]
+        # outstation update values
         for i, val_update in enumerate(binary_input_val):
             outstation_app.apply_update(opendnp3.Binary(value=val_update), index=i)
 
-        # Note: make sure Group, Variation, Index in config are consistent with desired testing dummy
-        # Note: group=1, variation=2 is BinaryInput (with flag)
-        # Note: reg_def = csv_config[i], structure example
-        # reg_def = {'Point Name': 'AnalogInput_index0', 'Volttron Point Name': 'AnalogInput_index0',
-        #            'Group': '30', 'Variation': '6', 'Index': '0', 'Scaling': '1', 'Units': 'NA',
-        #            'Writable': 'FALSE', 'Notes': 'Double Analogue input without status'}
-
-        # verify
-        for i, val_update in enumerate(binary_input_val):
-            # reg_def = csv_config[i]
-            reg_def = {'Point Name': f'BinaryInput_index{i}', 'Volttron Point Name': f'BinaryInput_index{i}',
-                       'Group': '1', 'Variation': '2', 'Index': f"{i}", 'Scaling': '1', 'Units': 'NA',
-                       'Writable': 'FALSE', 'Notes': ''}
+        # verify: driver read value
+        for i, (val_update, csv_row) in enumerate(zip(binary_input_val, reg_defs)):
+            # print(f"====== reg_defs {reg_defs}, analog_input_val {analog_input_val}")
             dnp3_register = UserDevelopRegisterDnp3(master_application=master_app,
-                                                    reg_def=reg_def,
+                                                    reg_def=csv_row,
                                                     **dnp3_inherit_init_args
                                                     )
             val_get = dnp3_register.get_register_value()
-            # print("===========val_get, val_update", val_get, val_update)
-            assert val_get == val_update
-
-    def test_get_register_value_binary_int_random(self, outstation_app, master_app, csv_config, dnp3_inherit_init_args):
-
-        # dummy test variable
-        binary_input_val = [random.choice([True, False]) for i in range(3)]
-        for i, val_update in enumerate(binary_input_val):
-            outstation_app.apply_update(opendnp3.Binary(value=val_update), index=i)
-
-        # Note: make sure Group, Variation, Index in config are consistent with desired testing dummy
-        # Note: group=1, variation=2 is BinaryInput (with flag)
-        # Note: reg_def = csv_config[i], structure example
-        # reg_def = {'Point Name': 'AnalogInput_index0', 'Volttron Point Name': 'AnalogInput_index0',
-        #            'Group': '30', 'Variation': '6', 'Index': '0', 'Scaling': '1', 'Units': 'NA',
-        #            'Writable': 'FALSE', 'Notes': 'Double Analogue input without status'}
-
-        # verify
-        for i, val_update in enumerate(binary_input_val):
-            # reg_def = csv_config[i]
-            reg_def = {'Point Name': f'BinaryInput_index{i}', 'Volttron Point Name': f'BinaryInput_index{i}',
-                       'Group': '1', 'Variation': '2', 'Index': f"{i}", 'Scaling': '1', 'Units': 'NA',
-                       'Writable': 'FALSE', 'Notes': ''}
-            dnp3_register = UserDevelopRegisterDnp3(master_application=master_app,
-                                                    reg_def=reg_def,
-                                                    **dnp3_inherit_init_args
-                                                    )
-            val_get = dnp3_register.get_register_value()
-            # print("===========val_get, val_update", val_get, val_update)
+            # print(f"=========== i {i}, val_get {val_get}, val_update {val_update}")
             assert val_get == val_update
 
 
 class TestDNP3RegisterControlWorkflow:
 
-    def test_set_register_value_analog_float(self, outstation_app, master_app, csv_config, dnp3_inherit_init_args):
+    def test_set_register_value_analog_float(self, outstation_app, master_app, csv_config,
+                                             dnp3_inherit_init_args, reg_def_dummy):
 
         # dummy test variable
         # Note: group=40, variation=4 is AnalogOutputDoubleFloat
-        analog_output_val = [343.23, 23.1109, 58.2]
-        for i, val_set in enumerate(analog_output_val):
-            reg_def = {'Point Name': f'AnalogOutput_index{i}', 'Volttron Point Name': f'AnalogOutput_index{i}',
-                       'Group': '40', 'Variation': '4', 'Index': f"{i}", 'Scaling': '1', 'Units': 'NA',
-                       'Writable': 'FALSE', 'Notes': ''}
+        output_val = [343.23, 23.1109, 58.2] + [random.random() for i in range(3)]
+
+        # dummy reg_def (csv config row)
+        # Note: group = 1, variation = 2 is BinaryInput
+        reg_def = reg_def_dummy
+        reg_defs = []
+        for i in range(len(output_val)):
+            reg_def["Group"] = "40"
+            reg_def["Variation"] = "4"
+            reg_def["Index"] = str(i)
+            reg_defs.append(reg_def.copy())  # Note: Python gotcha, mutable don't evaluate til the end of the loop.
+
+        # master set values
+        for i, (val_set, csv_row) in enumerate(zip(output_val, reg_defs)):
             dnp3_register = UserDevelopRegisterDnp3(master_application=master_app,
-                                                    reg_def=reg_def,
+                                                    reg_def=csv_row,
                                                     **dnp3_inherit_init_args
                                                     )
             dnp3_register.set_register_value(value=val_set)
 
-        # Note: make sure Group, Variation, Index in config are consistent with desired testing dummy
-        # Note: group=30, variation=1 is AnalogInputInt32
-        # Note: reg_def = csv_config[i], structure example
-        # reg_def = {'Point Name': 'AnalogInput_index0', 'Volttron Point Name': 'AnalogInput_index0',
-        #            'Group': '30', 'Variation': '6', 'Index': '0', 'Scaling': '1', 'Units': 'NA',
-        #            'Writable': 'FALSE', 'Notes': 'Double Analogue input without status'}
-
-        # verify
-        for i, val_update in enumerate(analog_output_val):
-            # reg_def = csv_config[i]
-            reg_def = {'Point Name': f'AnalogOutput_index{i}', 'Volttron Point Name': f'AnalogOutput_index{i}',
-                       'Group': '40', 'Variation': '4', 'Index': f"{i}", 'Scaling': '1', 'Units': 'NA',
-                       'Writable': 'FALSE', 'Notes': ''}
+        # verify: driver read value
+        for i, (val_set, csv_row) in enumerate(zip(output_val, reg_defs)):
+            # print(f"====== reg_defs {reg_defs}, analog_input_val {analog_input_val}")
             dnp3_register = UserDevelopRegisterDnp3(master_application=master_app,
-                                                    reg_def=reg_def,
+                                                    reg_def=csv_row,
                                                     **dnp3_inherit_init_args
                                                     )
             val_get = dnp3_register.get_register_value()
             # print("===========val_get, val_update", val_get, val_update)
-            assert val_get == val_update
-class TestPlaceholder:
+            assert val_get == val_set
 
-    def test_placeholder(self, csv_config):
-        print("=============", csv_config)
-        # k = "driver_config"
-        # print("=============", {k:driver_config_in_json_config.get(k)})
+    def test_set_register_value_analog_int(self, outstation_app, master_app, csv_config,
+                                           dnp3_inherit_init_args, reg_def_dummy):
+
+        # dummy test variable
+        # Note: group=40, variation=4 is AnalogOutputDoubleFloat
+        output_val = [45343, 344, 221] + [random.randint(1, 1000) for i in range(3)]
+
+        # dummy reg_def (csv config row)
+        # Note: group = 1, variation = 2 is BinaryInput
+        reg_def = reg_def_dummy
+        reg_defs = []
+        for i in range(len(output_val)):
+            reg_def["Group"] = "40"
+            reg_def["Variation"] = "1"
+            reg_def["Index"] = str(i)
+            reg_defs.append(reg_def.copy())  # Note: Python gotcha, mutable don't evaluate til the end of the loop.
+
+        # master set values
+        for i, (val_set, csv_row) in enumerate(zip(output_val, reg_defs)):
+            dnp3_register = UserDevelopRegisterDnp3(master_application=master_app,
+                                                    reg_def=csv_row,
+                                                    **dnp3_inherit_init_args
+                                                    )
+            dnp3_register.set_register_value(value=val_set)
+
+        # verify: driver read value
+        for i, (val_set, csv_row) in enumerate(zip(output_val, reg_defs)):
+            # print(f"====== reg_defs {reg_defs}, analog_input_val {analog_input_val}")
+            dnp3_register = UserDevelopRegisterDnp3(master_application=master_app,
+                                                    reg_def=csv_row,
+                                                    **dnp3_inherit_init_args
+                                                    )
+            val_get = dnp3_register.get_register_value()
+            # print("===========val_get, val_update", val_get, val_update)
+            assert val_get == val_set
+
+    def test_set_register_value_binary(self, outstation_app, master_app, csv_config,
+                                       dnp3_inherit_init_args, reg_def_dummy):
+
+        # dummy test variable
+        # Note: group=40, variation=4 is AnalogOutputDoubleFloat
+        output_val = [True, False, True] + [random.choice([True, False]) for i in range(3)]
+
+        # dummy reg_def (csv config row)
+        # Note: group = 1, variation = 2 is BinaryInput
+        reg_def = reg_def_dummy
+        reg_defs = []
+        for i in range(len(output_val)):
+            reg_def["Group"] = "10"
+            reg_def["Variation"] = "2"
+            reg_def["Index"] = str(i)
+            reg_defs.append(reg_def.copy())  # Note: Python gotcha, mutable don't evaluate til the end of the loop.
+
+        # master set values
+        for i, (val_set, csv_row) in enumerate(zip(output_val, reg_defs)):
+            dnp3_register = UserDevelopRegisterDnp3(master_application=master_app,
+                                                    reg_def=csv_row,
+                                                    **dnp3_inherit_init_args
+                                                    )
+            dnp3_register.set_register_value(value=val_set)
+
+        # verify: driver read value
+        for i, (val_set, csv_row) in enumerate(zip(output_val, reg_defs)):
+            # print(f"====== reg_defs {reg_defs}, analog_input_val {analog_input_val}")
+            dnp3_register = UserDevelopRegisterDnp3(master_application=master_app,
+                                                    reg_def=csv_row,
+                                                    **dnp3_inherit_init_args
+                                                    )
+            val_get = dnp3_register.get_register_value()
+            # print("===========val_get, val_update", val_get, val_update)
+            assert val_get == val_set

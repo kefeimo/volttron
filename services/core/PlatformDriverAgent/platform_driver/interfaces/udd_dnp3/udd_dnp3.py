@@ -208,3 +208,6 @@ class Interface(WrapperInterface):
             master_application=master
         )
         return register
+
+    # def get_point(self, point_name, **kwargs):
+    #     return super().get_point(point_name, **kwargs)
