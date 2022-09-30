@@ -50,7 +50,7 @@ import sys
 
 import requests
 
-from typing import List, Type, Dict, Union, Optional, TypeVar
+from typing import List, Type, Dict, Union, Optional
 
 stdout_stream = logging.StreamHandler(sys.stdout)
 stdout_stream.setFormatter(logging.Formatter('%(asctime)s\t%(name)s\t%(levelname)s\t%(message)s'))
@@ -72,7 +72,6 @@ type_mapping = {"string": str,
 
 # Type alias
 RegisterValue = Union[int, str, float, bool]
-Register = TypeVar("Register", bound=BaseRegister)
 
 
 class WrapperRegister(BaseRegister):
@@ -252,8 +251,7 @@ class WrapperInterface(BasicRevert, BaseInterface):
         # from *.csv configure file "driver_config": {...}
         # self.driver_config: dict = {}
 
-    def configure(self, driver_config_in_json_config: dict, csv_config: List[
-        dict]):  # TODO: ask driver.py, BaseInterface.configure to update signature when evoking
+    def configure(self, driver_config_in_json_config: dict, csv_config: List[dict]):  # TODO: ask driver.py, BaseInterface.configure to update signature when evoking
         """
         Used by driver.py
             def get_interface(self, driver_type, config_dict, config_string):
@@ -432,6 +430,7 @@ class WrapperInterface(BasicRevert, BaseInterface):
         return register.value
         # return val
 
+
     # def _set_point(self, point_name: str,
     #                value_to_set: RegisterValue):  # TODO: this method has some problem. Understand the logic: overall + example
 
@@ -491,251 +490,6 @@ class WrapperInterface(BasicRevert, BaseInterface):
             return self.point_map[name]
         except KeyError:
             raise DriverInterfaceError("Point not configured on device: " + name)
-
-
-class WrapperInterfaceNew:
-    """
-    Use composition instead of inheritance
-    """
-
-    def __init__(self, *args, **kwargs):
-        # self.basic_revert = BasicRevert(**kwargs)
-        # self.basic_interface = BaseInterface(**kwargs)
-        self.basic_revert = BasicRevert()
-        self.basic_interface = BaseInterface()
-        self._tracker = self.basic_revert._tracker
-
-        self.point_map: Dict[str, ImplementedRegister] = {}  # {register.point_name: register}
-        self.register_types: List[
-            ImplementedRegister] = []  # TODO: add sanity check for restister_types, e.g., count == register counts
-
-        self.csv_config = None  # TODO: try to get this value, potentially from def configure. get inspiration from modbus_tk testing
-        self.driver_config_in_json_config = None  # TODO: try to get this value, potentially from def configure
-
-    def configure(self, driver_config_in_json_config: dict, csv_config: List[
-        dict]):  # TODO: ask driver.py, BaseInterface.configure to update signature when evoking
-        """
-        Used by driver.py
-            def get_interface(self, driver_type, config_dict, config_string):
-                interface.configure(config_dict, config_string)
-
-        Parameters  # TODO: follow BaseInterface.configure signatures. But the names are wrong.
-        ----------
-        driver_config_in_json_config: associated with `driver_config` in driver-config.config (json-like file)
-                    user inputs are put here, e.g., IP address, url, etc.
-        csv_config: associated with the whole driver-config.csv file
-            Examples:
-            [{'Point Name': 'Heartbeat', 'Volttron Point Name': 'Heartbeat', 'Units': 'On/Off',
-            'Units Details': 'On/Off', 'Writable': 'TRUE', 'Starting Value': '0', 'Type': 'boolean',
-            'Notes': 'Point for heartbeat toggle'},
-            {'Point Name': 'Catfact', 'Volttron Point Name': 'Catfact', 'Units': 'No cat fact',
-            'Units Details': 'No cat fact', 'Writable': 'TRUE', 'Starting Value': 'No cat fact', 'Type': 'str',
-            'Notes': 'Cat fact extract from REST API'}]
-
-        """
-        # print("========================================== csv_config, ", csv_config)
-        # print("========================================== driver_config_in_json_config, ", driver_config_in_json_config)
-        self.csv_config = csv_config
-        self.driver_config_in_json_config = driver_config_in_json_config
-
-        # TODO configuration validation, i.e., self.config_check(...)
-        # self.config_check
-        self.parse_config(csv_config, driver_config_in_json_config)
-
-    def parse_config(self, csv_config, driver_config_in_json_config,
-                     register_type_list):  # TODO: this configDict is from *.csv not .config
-        # print("========================================== csv_config, ", csv_config)
-        # print("========================================== driver_config_in_json_config, ", driver_config_in_json_config)
-
-        # driver_config: DriverConfig = DriverConfig(csv_config)
-        # valid_csv_config = DriverConfig(csv_config).key_validate()
-        # print("========================================== valid_csv_config, ", valid_csv_config)
-
-        if csv_config is None:  # TODO: leave it now. Later for central data check
-            return
-
-        # register_types: List[ImplementedRegister] = register_type_list
-        register_types: List[ImplementedRegister] = self.pass_register_types(csv_config, driver_config_in_json_config)
-        valid_csv_config = csv_config  # TODO: Design the config check (No config check for now.)
-        for reg_def, register_type_iter in zip(valid_csv_config, register_types):
-            # Skip lines that have no address yet. # TODO: understand why
-            if not reg_def['Point Name']:
-                continue
-
-            point_name = reg_def['Volttron Point Name']
-            type_name = reg_def.get("Data Type", 'string')
-            reg_type = type_mapping.get(type_name, str)
-            units = reg_def['Units']
-            read_only = reg_def['Writable'].lower() != 'true'  # TODO: watch out for this is opposite logic
-
-            description = reg_def.get('Notes', '')
-
-            # default_value = reg_def.get("defaultvalue", 'sin').strip()
-            default_value = reg_def.get(
-                "Default Value")  # TODO: redesign default value logic, e.g., beable to map to real python type
-            if not default_value:
-                default_value = None
-
-            # register_type = FakeRegister if not point_name.startswith('Cat') else CatfactRegister  # TODO: change this
-            register_type = register_type_iter  # TODO: Inconventional, document this.
-
-            # print("========================================== point_name, ", point_name)
-            # print("========================================== reg_type, ", reg_type)
-            # print("========================================== units, ", units)
-            # print("========================================== read_only, ", read_only)
-            # print("========================================== default_value, ", default_value)
-            # print("========================================== description, ", description)
-            print("========================================== reg_def, ", reg_def)
-            # Note: the following is to init a register_type object, e.g., WrapperRegister
-            try:
-                register: WrapperRegister = self.create_register(driver_config=driver_config_in_json_config,
-                                                                 point_name=point_name,
-                                                                 data_type=reg_type,
-                                                                 # TODO: make it more clear in documentation
-                                                                 units=units,
-                                                                 read_only=read_only,
-                                                                 default_value=default_value,
-                                                                 description=description,
-                                                                 csv_config=csv_config,
-                                                                 reg_def=reg_def,
-                                                                 register_type=register_type)
-
-                if default_value:
-                    self.basic_revert.set_default(point_name, register.value)
-
-                self.insert_register(register)
-
-            except Exception as e:
-                print(e)
-
-    @staticmethod
-    @abc.abstractmethod
-    def pass_register_types(csv_config: dict, driver_config_in_json_config: List[dict],
-                            register_type_list: List[ImplementedRegister] = None) -> List[ImplementedRegister]:
-        """
-        For ingesting the register types list
-        Will be used by concrete Interface class inherit this template
-
-        Parameters
-        ----------
-        driver_config_in_json_config: associated with `driver_config` in driver-config.config (json-like file)
-                    user inputs are put here, e.g., IP address, url, etc.
-        csv_config: associated with the whole driver-config.csv file
-            Examples:
-            [{'Point Name': 'Heartbeat', 'Volttron Point Name': 'Heartbeat', 'Units': 'On/Off',
-            'Units Details': 'On/Off', 'Writable': 'TRUE', 'Starting Value': '0', 'Type': 'boolean',
-            'Notes': 'Point for heartbeat toggle'},
-            {'Point Name': 'Catfact', 'Volttron Point Name': 'Catfact', 'Units': 'No cat fact',
-            'Units Details': 'No cat fact', 'Writable': 'TRUE', 'Starting Value': 'No cat fact', 'Type': 'str',
-            'Notes': 'Cat fact extract from REST API'}]
-        register_type_list:
-            Example:
-            [RestAPIRegister, RestAPIRegister, RestAPIRegister, RandomBoolRegister]
-        """
-        pass
-        return register_type_list
-
-    def create_register(self, driver_config,
-                        point_name,
-                        data_type,
-                        units,
-                        read_only,
-                        default_value,
-                        description,
-                        csv_config,
-                        reg_def,
-                        register_type, *args, **kwargs) -> ImplementedRegister:
-        pass
-        """
-        Factory method to init (WrapperRegister) register object
-
-        :param register_type: the class name of the to-be-created register, e.g., WrapperRegister
-        :param driver_config_in_json_config: json config file, 
-        :param csv_config: csv config file, Dict[str, str]
-
-        """
-        register: WrapperRegister = register_type(driver_config=driver_config,
-                                                  point_name=point_name,
-                                                  data_type=data_type,  # TODO: make it more clear in documentation
-                                                  units=units,
-                                                  read_only=read_only,
-                                                  default_value=default_value,
-                                                  description=description,
-                                                  csv_config=csv_config,
-                                                  reg_def=reg_def)
-        return register
-
-    def insert_register(self, register: WrapperRegister):
-        """
-        Inserts a register into the :py:class:`Interface`.
-
-        :param register: Register to add to the interface.
-        :type register: :py:class:`BaseRegister`
-        """
-        register_point: str = register.point_name
-        self.point_map[register_point] = register
-
-        register_type = register.get_register_type()
-        self.basic_interface.registers[register_type].append(register)
-
-    def get_point(self, point_name, **kwargs) -> RegisterValue:
-        register: WrapperRegister = self.get_register_by_name(point_name)
-        # val: RegisterValue = register.get_register_value()
-
-        return register.value
-
-    def get_register_by_name(self, name: str) -> Register:
-        return self.basic_interface.get_register_by_name(name)
-
-    def set_point(self, point_name, value):
-        """
-        Implementation of :py:meth:`BaseInterface.set_point`
-
-        Passes arguments through to :py:meth:`BasicRevert._set_point`
-        """
-        # return self.basic_revert.set_point(point_name, value)
-        result = self._set_point(point_name, value)
-        self._tracker.mark_dirty_point(point_name)
-        return result
-
-    def _set_point(self, point_name, value, **kwargs):
-        """
-        Parameters
-        ----------
-        point_name
-        value
-
-        Returns
-        -------
-
-        """
-        value_to_set = value
-        register: ImplementedRegister = self.get_register_by_name(point_name)
-        # Note: leave register method to verify, e.g., check writability.
-        # register.value(value_to_set)
-        # value_response: RegisterValue = register.value
-
-        set_pt_response = register.set_register_value(value=value_to_set)
-        # verify with get_point
-        get_pt_response = self.get_point(point_name=point_name)
-
-        success_flag_strict = (get_pt_response == value_to_set)
-        success_flag_relax = (str(get_pt_response) == str(value_to_set))
-        success_flag = success_flag_relax
-
-        response = {"success_flag": success_flag,
-                    "value_to_set": value_to_set,
-                    "set_pt_response": set_pt_response,
-                    "get_pt_response": get_pt_response}
-        if not success_flag:
-            _log.warning(f"Set value failed, {response}")
-        return response
-
-    def scrape_all(self):
-        """
-        Implementation of :py:meth:`BaseInterface.scrape_all`
-        """
-        return self.basic_revert.scrape_all()
 
 
 class DriverInterfaceError(Exception):
