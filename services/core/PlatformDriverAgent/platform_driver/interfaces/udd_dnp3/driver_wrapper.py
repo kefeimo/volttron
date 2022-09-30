@@ -56,7 +56,7 @@ stdout_stream = logging.StreamHandler(sys.stdout)
 stdout_stream.setFormatter(logging.Formatter('%(asctime)s\t%(name)s\t%(levelname)s\t%(message)s'))
 
 _log = logging.getLogger(__name__)
-_log = logging.getLogger("data_retrieval_demo")
+# _log = logging.getLogger("data_retrieval_demo")
 _log.addHandler(stdout_stream)
 _log.setLevel(logging.DEBUG)
 _log.setLevel(logging.WARNING)
@@ -350,7 +350,7 @@ class WrapperInterface(BasicRevert, BaseInterface):
             # print("========================================== read_only, ", read_only)
             # print("========================================== default_value, ", default_value)
             # print("========================================== description, ", description)
-            print("========================================== reg_def, ", reg_def)
+            # print("========================================== reg_def, ", reg_def)
             # Note: the following is to init a register_type object, e.g., WrapperRegister
             try:
                 # register: WrapperRegister = register_type(driver_config=driver_config_in_json_config,
@@ -374,13 +374,14 @@ class WrapperInterface(BasicRevert, BaseInterface):
                                                                  csv_config=csv_config,
                                                                  reg_def=reg_def,
                                                                  register_type=register_type)
+                if default_value is not None:
+                    self.set_default(point_name, register.value)
+
+                self.insert_register(register)
             except Exception as e:
                 print(e)
 
-            if default_value is not None:
-                self.set_default(point_name, register.value)
 
-            self.insert_register(register)
 
     def create_register(self, driver_config,
                         point_name,
@@ -426,14 +427,33 @@ class WrapperInterface(BasicRevert, BaseInterface):
         self.registers[register_type].append(register)
 
     def get_point(self, point_name, **kwargs) -> RegisterValue:
+        """
+        Override BasicInvert method
+        Note: this method should be evoked by vip agent
+        EXAMPLE:
+            rs = a.vip.rpc.call("platform.driver", "get_point",
+              "campus-vm/building-vm/Dnp3",
+               "AnalogInput_index0").get()
+        """
         register: WrapperRegister = self.get_register_by_name(point_name)
-        # val: RegisterValue = register.get_register_value()
-
-        return register.value
-        # return val
+        val = self.get_reg_point(register)
+        return val
 
     # def _set_point(self, point_name: str,
     #                value_to_set: RegisterValue):  # TODO: this method has some problem. Understand the logic: overall + example
+
+    def set_point(self, point_name, value):
+        """
+        Override/Restate BasicInvert method for convenience
+        Note: this method should be evoked by vip agent
+        EXAMPLE:
+            rs = a.vip.rpc.call("platform.driver", "set_point",
+              "campus-vm/building-vm/Dnp3",
+               "AnalogInput_index0", 0.543).get()
+        """
+        # result = self._set_point(point_name, value)
+        # self._tracker.mark_dirty_point(point_name)
+        return super().set_point(point_name, value)
 
     def _set_point(self, point_name, value, **kwargs):
         """
@@ -448,17 +468,47 @@ class WrapperInterface(BasicRevert, BaseInterface):
         """
         value_to_set = value
         register: ImplementedRegister = self.get_register_by_name(point_name)
-        # Note: leave register method to verify, e.g., check writability.
-        # register.value(value_to_set)
-        # value_response: RegisterValue = register.value
 
+        response = self.set_reg_point_w_verification(value_to_set=value, register=register)
+        return response
+
+    @staticmethod
+    def get_reg_point(register: ImplementedRegister):
+        """
+        Core logic for get_point
+        """
+        return register.value
+
+    @staticmethod
+    def set_reg_point(register: ImplementedRegister, value_to_set: RegisterValue):
+        """
+        Core logic for set_point, i.e., _set_point without verification
+        Note: Can be used for vip-agent-mock testing
+        """
         set_pt_response = register.set_register_value(value=value_to_set)
+        return set_pt_response
+
+    @classmethod
+    def set_reg_point_w_verification(cls, value_to_set: RegisterValue, register: ImplementedRegister,
+                                     relax_verification=True):
+        """
+        Core logic for set_point, i.e., _set_point with verification
+        Note: Can be used for vip-agent-mock testing
+        """
+        # Note: leave register method to verify, e.g., check writability.
+
+        # set point workflow
+        set_pt_response = cls.set_reg_point(register=register, value_to_set=value_to_set)
+
         # verify with get_point
-        get_pt_response = self.get_point(point_name=point_name)
+        get_pt_response = cls.get_reg_point(register)
 
         success_flag_strict = (get_pt_response == value_to_set)
         success_flag_relax = (str(get_pt_response) == str(value_to_set))
-        success_flag = success_flag_relax
+        if relax_verification:
+            success_flag = success_flag_relax
+        else:
+            success_flag = success_flag_strict
 
         response = {"success_flag": success_flag,
                     "value_to_set": value_to_set,
@@ -467,6 +517,7 @@ class WrapperInterface(BasicRevert, BaseInterface):
         if not success_flag:
             _log.warning(f"Set value failed, {response}")
         return response
+
 
     def _scrape_all(self) -> Dict[str, any]:
         result: Dict[str, RegisterValue] = {}  # Dict[register.point_name, register.value]
@@ -585,7 +636,7 @@ class WrapperInterfaceNew:
             # print("========================================== read_only, ", read_only)
             # print("========================================== default_value, ", default_value)
             # print("========================================== description, ", description)
-            print("========================================== reg_def, ", reg_def)
+            # print("========================================== reg_def, ", reg_def)
             # Note: the following is to init a register_type object, e.g., WrapperRegister
             try:
                 register: WrapperRegister = self.create_register(driver_config=driver_config_in_json_config,
@@ -682,6 +733,7 @@ class WrapperInterfaceNew:
         register: WrapperRegister = self.get_register_by_name(point_name)
         # val: RegisterValue = register.get_register_value()
 
+        # return "testing_value"
         return register.value
 
     def get_register_by_name(self, name: str) -> Register:

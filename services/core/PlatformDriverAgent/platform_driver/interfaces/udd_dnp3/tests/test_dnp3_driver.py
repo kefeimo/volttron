@@ -21,6 +21,8 @@ from services.core.PlatformDriverAgent.platform_driver.interfaces. \
 from services.core.PlatformDriverAgent.platform_driver.interfaces. \
     udd_dnp3.udd_dnp3 import UserDevelopRegisterDnp3
 from pydnp3 import opendnp3
+from services.core.PlatformDriverAgent.platform_driver.interfaces.\
+    udd_dnp3.udd_dnp3 import Interface as DNP3Interface
 
 
 class TestDummy:
@@ -225,7 +227,7 @@ class TestDNPRegister:
                                              dnp3_inherit_init_args, reg_def_dummy):
 
         # dummy test variable
-        analog_input_val = [345, 1123, 98] + [random.randint(1, 100) for i in range(3)]
+        analog_input_val = [445.33, 1123.56, 98.456] + [random.random() for i in range(3)]
 
         # dummy reg_def (csv config row)
         # Note: group = 30, variation = 6 is AnalogInputFloat
@@ -424,3 +426,82 @@ class TestDNP3RegisterControlWorkflow:
             val_get = dnp3_register.get_register_value()
             # print("===========val_get, val_update", val_get, val_update)
             assert val_get == val_set
+
+
+class TestDNP3Interface:
+
+    def test_init(self):
+        pass
+        dnp3_interface = DNP3Interface()
+
+    def test_get_reg_point(self, outstation_app, master_app, csv_config,
+                           dnp3_inherit_init_args, reg_def_dummy):
+        # dummy test variable
+        analog_input_val = [445.33, 1123.56, 98.456] + [random.random() for i in range(3)]
+
+        # dummy reg_def (csv config row)
+        # Note: group = 30, variation = 6 is AnalogInputFloat
+        reg_def = reg_def_dummy
+        reg_defs = []
+        for i in range(len(analog_input_val)):
+            reg_def["Group"] = "30"
+            reg_def["Variation"] = "6"
+            reg_def["Index"] = str(i)
+            reg_defs.append(reg_def.copy())  # Note: Python gotcha, mutable don't evaluate til the end of the loop.
+
+        # outstation update values
+        for i, val_update in enumerate(analog_input_val):
+            outstation_app.apply_update(opendnp3.Analog(value=val_update), index=i)
+
+        # verify: driver read value
+        dnp3_interface = DNP3Interface()
+        for i, (val_update, csv_row) in enumerate(zip(analog_input_val, reg_defs)):
+            # print(f"====== reg_defs {reg_defs}, analog_input_val {analog_input_val}")
+            dnp3_register = UserDevelopRegisterDnp3(master_application=master_app,
+                                                    reg_def=csv_row,
+                                                    **dnp3_inherit_init_args
+                                                    )
+
+            val_get = dnp3_interface.get_reg_point(register=dnp3_register)
+            # print("======== dnp3_register.value", dnp3_register.value)
+            # print("===========val_get, val_update", val_get, val_update)
+            assert val_get == val_update
+
+    def test_set_reg_point(self, outstation_app, master_app, csv_config,
+                           dnp3_inherit_init_args, reg_def_dummy):
+        # dummy test variable
+        analog_output_val = [445.33, 1123.56, 98.456] + [random.random() for i in range(3)]
+
+        # dummy reg_def (csv config row)
+        # Note: group = 30, variation = 6 is AnalogInputFloat
+        reg_def = reg_def_dummy
+        reg_defs = []
+        for i in range(len(analog_output_val)):
+            reg_def["Group"] = "40"
+            reg_def["Variation"] = "4"
+            reg_def["Index"] = str(i)
+            reg_defs.append(reg_def.copy())  # Note: Python gotcha, mutable don't evaluate til the end of the loop.
+
+        dnp3_interface = DNP3Interface()
+
+        # dnp3_interface update values
+        for i, (val_update, csv_row) in enumerate(zip(analog_output_val, reg_defs)):
+            dnp3_register = UserDevelopRegisterDnp3(master_application=master_app,
+                                                    reg_def=csv_row,
+                                                    **dnp3_inherit_init_args
+                                                    )
+            dnp3_interface.set_reg_point(register=dnp3_register, value_to_set=val_update)
+
+        # verify: driver read value
+
+        for i, (val_update, csv_row) in enumerate(zip(analog_output_val, reg_defs)):
+            # print(f"====== reg_defs {reg_defs}, analog_input_val {analog_input_val}")
+            dnp3_register = UserDevelopRegisterDnp3(master_application=master_app,
+                                                    reg_def=csv_row,
+                                                    **dnp3_inherit_init_args
+                                                    )
+
+            val_get = dnp3_interface.get_reg_point(register=dnp3_register)
+            # print("======== dnp3_register.value", dnp3_register.value)
+            # print("===========val_get, val_update", val_get, val_update)
+            assert val_get == val_update

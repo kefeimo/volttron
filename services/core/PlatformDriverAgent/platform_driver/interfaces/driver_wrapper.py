@@ -329,7 +329,7 @@ class WrapperInterface(BasicRevert, BaseInterface):
             # print("========================================== read_only, ", read_only)
             # print("========================================== default_value, ", default_value)
             # print("========================================== description, ", description)
-            print("========================================== reg_def, ", reg_def)
+            # print("========================================== reg_def, ", reg_def)
             # Note: the following is to init a register_type object, e.g., WrapperRegister
             try:
                 # register: WrapperRegister = register_type(driver_config=driver_config_in_json_config,

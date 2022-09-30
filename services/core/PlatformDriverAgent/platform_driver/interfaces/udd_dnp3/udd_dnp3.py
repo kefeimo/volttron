@@ -7,6 +7,8 @@ import numpy as np
 import random
 import requests
 
+from .driver_wrapper import WrapperInterfaceNew
+
 # TODO-developer: Your code here
 # Add dependency as needed, and update in requirements
 import json
@@ -209,5 +211,19 @@ class Interface(WrapperInterface):
         )
         return register
 
-    # def get_point(self, point_name, **kwargs):
-    #     return super().get_point(point_name, **kwargs)
+    @staticmethod
+    def get_reg_point(register: ImplementedRegister):
+        """
+        Core logic for get_point
+        Note: Can be used for vip-agent-mock testing
+        """
+        return register.get_register_value()
+
+    @staticmethod
+    def set_reg_point(register: ImplementedRegister, value_to_set: RegisterValue):
+        """
+        Core logic for set_point, i.e., _set_point without verification
+        Note: Can be used for vip-agent-mock testing
+        """
+        set_pt_response = register.set_register_value(value=value_to_set)
+        return set_pt_response

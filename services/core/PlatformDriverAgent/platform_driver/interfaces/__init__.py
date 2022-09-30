@@ -240,7 +240,8 @@ class BaseRegister:
         return self.description
 
 
-class BaseInterface(object, metaclass=abc.ABCMeta):
+# class BaseInterface(object, metaclass=abc.ABCMeta):
+class BaseInterface(object):
     """
     Main class for implementing support for new devices.
 
@@ -547,7 +548,8 @@ class RevertTracker:
         return results
 
 
-class BasicRevert(object, metaclass=abc.ABCMeta):
+# class BasicRevert(object, metaclass=abc.ABCMeta):
+class BasicRevert(object):
     """
     A mixin that implements the :py:meth:`BaseInterface.revert_all`
     and :py:meth:`BaseInterface.revert_point` methods on an
