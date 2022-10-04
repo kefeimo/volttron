@@ -1,0 +1,3 @@
+[submodule "services/core/PlatformDriverAgent/platform_driver/interfaces/udd_dnp3/pydnp3"]
+	path = services/core/PlatformDriverAgent/platform_driver/interfaces/udd_dnp3/pydnp3
+	url = https://github.com/kefeimo/pydnp3.git
