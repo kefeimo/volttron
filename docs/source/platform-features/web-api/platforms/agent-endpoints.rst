@@ -8,11 +8,13 @@ Platforms Agents endpoints expose functionality associated with applications
 running on a VOLTTRON platform.
 
 Platforms Agents endpoints currently include:
-    * :ref:`Enabled <Platforms-Agents-Enabled-Endpoints>`: Endpoints for enabling, disabling, and setting the start priority of
-      agents on the platform.
+    * :ref:`Configs <Platforms-Agents-Configs-Endpoints>`: Endpoints for managing the configuration store for agents
+      on the platform.
+    * :ref:`Enabled <Platforms-Agents-Enabled-Endpoints>`: Endpoints for enabling, disabling, and setting the start
+      priority of agents on the platform.
     * :ref:`Running <Platforms-Agents-Running-Endpoints>`: Endpoints for starting and stopping agents on the platform.
-    * :ref:`RPC <Platforms-Agents-Rpc-Endpoints>`: Endpoints allowing, discovery, inspection, and calling of remote procedure
-      calls to agents running on the platform.
+    * :ref:`RPC <Platforms-Agents-Rpc-Endpoints>`: Endpoints allowing, discovery, inspection, and calling of remote
+      procedure calls to agents running on the platform.
     * :ref:`Status <Platforms-Agents-Status-Endpoints>`: Endpoints for determining the status information for an agent
       running on the platform.
     * :ref:`Tag <Platforms-Agents-Tag-Endpoints>`: Endpoints for getting, setting, and deleting the tag of agents.
@@ -109,3 +111,14 @@ Response:
             }
 
 * **With invalid BEARER token:** ``401 Unauthorized``
+
+.. toctree::
+    :hidden:
+
+    ConfigStore <agents/config-endpoints>
+    Enabled <agents/enabled-endpoints>
+    Health <agents/health-endpoints>
+    RPC <agents/rpc-endpoints>
+    Running <agents/running-endpoints>
+    Status <agents/status-endpoints>
+    Tag <agents/tag-endpoints>

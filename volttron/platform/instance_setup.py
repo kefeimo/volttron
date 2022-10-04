@@ -51,18 +51,21 @@ from gevent import subprocess
 from gevent.subprocess import Popen
 from zmq import green as zmq
 
-from bootstrap import install_rabbit, default_rmq_dir
 from requirements import extras_require
-from volttron.platform import certs, is_rabbitmq_available
+from volttron.platform import is_rabbitmq_available
+from volttron.platform.auth import certs
 from volttron.platform import jsonapi
 from volttron.platform.agent.known_identities import PLATFORM_WEB, PLATFORM_DRIVER, VOLTTRON_CENTRAL
 from volttron.platform.agent.utils import get_platform_instance_name, wait_for_volttron_startup, \
     is_volttron_running, wait_for_volttron_shutdown, setup_logging
 from volttron.utils import get_hostname
 from volttron.utils.prompt import prompt_response, y, n, y_or_n
-from volttron.utils.rmq_config_params import RMQConfig
-from volttron.utils.rmq_setup import setup_rabbitmq_volttron
 from . import get_home, get_services_core, set_home
+
+if is_rabbitmq_available():
+    from bootstrap import install_rabbit, default_rmq_dir
+    from volttron.utils.rmq_config_params import RMQConfig
+    from volttron.utils.rmq_setup import setup_rabbitmq_volttron
 
 # Global configuration options.  Must be key=value strings.  No cascading
 # structure so that we can easily create/load from the volttron config file
@@ -191,7 +194,7 @@ volttron-cfg needs to be run from the volttron top level source directory.
 
 def _start_platform():
     vhome = get_home()
-    cmd = ['volttron', '-vv',
+    cmd = ['volttron', '-v', '-v',
            '-l', os.path.join(vhome, 'volttron.cfg.log')]
     print(cmd)
     if verbose:
@@ -231,9 +234,9 @@ def _install_agent(agent_dir, config, tag, identity):
             fout.write(jsonapi.dumps(config))
         config_file = cfg.name
     # Allow a little extra time for VC to install, especially for RMQ
-    if tag == 'vc':
+    if tag in ['vc', 'platform_driver']:
         cmd_array = ['volttron-ctl', 'install', "--agent-config", config_file,
-                     "--tag", tag, "--timeout", "120", "--force"]
+                     "--tag", tag, "--timeout", "360", "--force"]
     else:
         cmd_array = ['volttron-ctl', 'install', "--agent-config", config_file, "--tag", tag, "--force"]
     if identity:
@@ -1090,7 +1093,7 @@ def main():
     group.add_argument('--agent', nargs='+',
                         help='configure listed agents')
 
-    group.add_argument('--secure-agent-users', action='store_true', dest='secure_agent_users',
+    group.add_argument('--agent-isolation-mode', action='store_true', dest='agent_isolation_mode',
                        help='Require that agents run with their own users (this requires running '
                             'scripts/secure_user_permissions.sh as sudo)')
 
@@ -1118,8 +1121,8 @@ def main():
     if args.list_agents:
         print("Agents available to configure:{}".format(agent_list))
 
-    elif args.secure_agent_users:
-        config_opts['secure-agent-users'] = args.secure_agent_users
+    elif args.agent_isolation_mode:
+        config_opts['agent-isolation-mode'] = args.agent_isolation_mode
         _update_config_file()
     elif args.is_rabbitmq:
         process_rmq_inputs(vars(args))

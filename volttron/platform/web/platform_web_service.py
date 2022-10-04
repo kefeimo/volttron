@@ -61,16 +61,16 @@ from .vui_endpoints import VUIEndpoints
 from .authenticate_endpoint import AuthenticateEndpoints
 from .csr_endpoints import CSREndpoints
 from .webapp import WebApplicationWrapper
-from volttron.platform.agent import utils
 from volttron.platform.agent.known_identities import \
     CONTROL, VOLTTRON_CENTRAL, AUTH
 from ..agent.utils import get_fq_identity
 from ..agent.web import Response, JsonResponse
-from ..auth import AuthEntry, AuthFile, AuthFileEntryAlreadyExists
-from ..certs import Certs, CertWrapper
+from volttron.platform.auth.auth_entry import AuthEntry
+from volttron.platform.auth.auth_file import AuthFile, AuthFileEntryAlreadyExists
+from volttron.platform.auth.certs import Certs, CertWrapper
 from ..jsonrpc import (json_result,
                        json_validate_request,
-                       INVALID_REQUEST, METHOD_NOT_FOUND,
+                       INVALID_REQUEST,
                        UNHANDLED_EXCEPTION, UNAUTHORIZED,
                        UNAVAILABLE_PLATFORM, INVALID_PARAMS,
                        UNAVAILABLE_AGENT, INTERNAL_ERROR, RemoteError)
@@ -78,13 +78,10 @@ from ..jsonrpc import (json_result,
 from ..vip.agent import Agent, Core, RPC, Unreachable
 from ..vip.agent.subsystems import query
 from ..vip.socket import encode_key
-from ...platform import jsonapi, jsonrpc, get_platform_config
+from ...platform import jsonapi, jsonrpc
 from ...platform.aip import AIPplatform
 from ...utils import is_ip_private
 from ...utils.rmq_config_params import RMQConfig
-
-# must be after importing of utils which imports grequest.
-import requests
 
 _log = logging.getLogger(__name__)
 
@@ -394,6 +391,8 @@ class PlatformWebService(Agent):
         # a tcp address in the <VOLTTRON_HOME>/config or --vip-address command line argument.
         if external_vip and self.serverkey:
             return_dict['serverkey'] = encode_key(self.serverkey)
+            return_dict['vip-address'] = external_vip
+        elif external_vip:
             return_dict['vip-address'] = external_vip
         elif not external_vip:
             _log.warning("There was no external vip-address specified in config file or command line.")
