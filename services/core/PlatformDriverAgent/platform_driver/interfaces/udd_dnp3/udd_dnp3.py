@@ -3,7 +3,7 @@
 from .driver_wrapper import WrapperInterface, WrapperRegister
 from .driver_wrapper import ImplementedRegister, RegisterValue
 from typing import List, Optional, Dict
-import numpy as np
+# import numpy as np
 import random
 import requests
 

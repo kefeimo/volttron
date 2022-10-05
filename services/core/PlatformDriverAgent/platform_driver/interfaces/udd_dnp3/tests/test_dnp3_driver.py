@@ -7,11 +7,11 @@ import json
 from pathlib import Path
 import random
 
-from volttrontesting.utils.utils import get_rand_ip_and_port
-from volttron.platform import get_services_core, jsonapi
-from platform_driver.interfaces.modbus_tk.server import Server
-from platform_driver.interfaces.modbus_tk.maps import Map, Catalog
-from volttron.platform.agent.known_identities import PLATFORM_DRIVER
+# from volttrontesting.utils.utils import get_rand_ip_and_port
+# from volttron.platform import get_services_core, jsonapi
+# from platform_driver.interfaces.modbus_tk.server import Server
+# from platform_driver.interfaces.modbus_tk.maps import Map, Catalog
+# from volttron.platform.agent.known_identities import PLATFORM_DRIVER
 
 # from services.core.PlatformDriverAgent.platform_driver.interfaces import udd_dnp3
 from services.core.PlatformDriverAgent.platform_driver.interfaces. \
