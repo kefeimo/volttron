@@ -51,6 +51,7 @@ import sys
 import requests
 
 from typing import List, Type, Dict, Union, Optional, TypeVar
+from time import sleep
 
 stdout_stream = logging.StreamHandler(sys.stdout)
 stdout_stream.setFormatter(logging.Formatter('%(asctime)s\t%(name)s\t%(levelname)s\t%(message)s'))
@@ -466,10 +467,11 @@ class WrapperInterface(BasicRevert, BaseInterface):
         -------
 
         """
-        value_to_set = value
+        # value_to_set = value
         register: ImplementedRegister = self.get_register_by_name(point_name)
 
-        response = self.set_reg_point_w_verification(value_to_set=value, register=register)
+        # response = self.set_reg_point_w_verification(value_to_set=value, register=register)
+        response = self.set_reg_point_async_w_verification(value_to_set=value, register=register)
         return response
 
     @staticmethod
@@ -518,6 +520,50 @@ class WrapperInterface(BasicRevert, BaseInterface):
             _log.warning(f"Set value failed, {response}")
         return response
 
+    @classmethod
+    def set_reg_point_async_w_verification(cls, value_to_set: RegisterValue, register: ImplementedRegister,
+                                           relax_verification=True):
+        """
+        Counterpart of set_reg_point_w_verification for asynchronous workflow with delay and retry.
+        """
+
+        # set point workflow
+        set_pt_response = cls.set_reg_point(register=register, value_to_set=value_to_set)
+
+        # verify with get_point
+        get_pt_response = cls.get_reg_point(register)
+
+        def check_success_flag():
+            _success_flag_strict = (get_pt_response == value_to_set)
+            _success_flag_relax = (str(get_pt_response) == str(value_to_set))
+            if relax_verification:
+                _success_flag = _success_flag_relax
+            else:
+                _success_flag = _success_flag_strict
+            return _success_flag
+
+        # note: only delay and retry the read/get logic NOT the send/set logic
+        # note: hard-coded delay time and number of retry. Use small delay, large retry number strategy.
+        # For local instances, 2 sec should be sufficient.
+        retry_delay = 0.2
+        retry_max = 20
+        retry_count = 0
+        success_flag = check_success_flag()
+        while not success_flag and retry_count < retry_max:
+            sleep(retry_delay)
+            retry_count += 1
+
+            get_pt_response = cls.get_reg_point(register)
+
+            success_flag = check_success_flag()
+
+        response = {"success_flag": success_flag,
+                    "value_to_set": value_to_set,
+                    "set_pt_response": set_pt_response,
+                    "get_pt_response": get_pt_response}
+        if not success_flag:
+            _log.warning(f"Set value failed, {response}")
+        return response
 
     def _scrape_all(self) -> Dict[str, any]:
         result: Dict[str, RegisterValue] = {}  # Dict[register.point_name, register.value]

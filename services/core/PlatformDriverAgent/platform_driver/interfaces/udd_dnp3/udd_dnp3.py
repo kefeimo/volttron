@@ -77,11 +77,12 @@ class UserDevelopRegisterDnp3(WrapperRegister):
             if val is not None:
                 return val
             else:
-                raise ValueError(f"Returned invalid dnp3 data point {val}")
+                _log.warning("udd_dnp3 driver (master) couldn't collect data from the outstation.")
+                raise ValueError(f"Returned invalid dnp3 data point {val}")  # do not publish invalid values
         except Exception as e:
             # print(f"!!!!!!!!!!!!!!!!!!!!{e}")
             _log.error(e)
-            _log.warning("udd_dnp3 driver (master) couldn't collect data from the outstation.")
+
             raise Exception(e)
 
     @staticmethod
