@@ -8,10 +8,10 @@ from pathlib import Path
 import random
 
 # from volttrontesting.utils.utils import get_rand_ip_and_port
-# from volttron.platform import get_services_core, jsonapi
+from volttron.platform import get_services_core, jsonapi
 # from platform_driver.interfaces.modbus_tk.server import Server
 # from platform_driver.interfaces.modbus_tk.maps import Map, Catalog
-# from volttron.platform.agent.known_identities import PLATFORM_DRIVER
+from volttron.platform.agent.known_identities import PLATFORM_DRIVER
 
 # from services.core.PlatformDriverAgent.platform_driver.interfaces import udd_dnp3
 from services.core.PlatformDriverAgent.platform_driver.interfaces. \
@@ -34,21 +34,55 @@ class TestDummy:
         print("I am a silly dummy test.")
 
 
-# DRIVER_CONFIG = {
-#     "driver_config": {"master_ip": "0.0.0.0", "outstation_ip": "127.0.0.1",
-#                       "master_id": 2, "outstation_id": 1,
-#                       "port": 20000},
-#     "registry_config": "config://udd-Dnp3.csv",
-#     "driver_type": "udd_dnp3",
-#     "interval": 5,
-#     "timezone": "UTC",
-#     "campus": "campus-vm",
-#     "building": "building-vm",
-#     "unit": "Dnp3",
-#     "publish_depth_first_all": True,
-#     "heart_beat_point": "random_bool"
-# }
+DRIVER_CONFIG = {
+    "driver_config": {"master_ip": "0.0.0.0", "outstation_ip": "127.0.0.1",
+                      "master_id": 2, "outstation_id": 1,
+                      "port": 20000},
+    "registry_config": "config://udd-Dnp3.csv",
+    "driver_type": "udd_dnp3",
+    "interval": 5,
+    "timezone": "UTC",
+    "campus": "campus-vm",
+    "building": "building-vm",
+    "unit": "Dnp3",
+    "publish_depth_first_all": True,
+    "heart_beat_point": "random_bool"
+}
 
+# New modbus_tk csv config
+REGISTRY_CONFIG_STRING = """Volttron Point Name,Register Name
+unsigned short,unsigned_short
+unsigned int,unsigned_int
+unsigned long,unsigned_long
+sample short,sample_short
+sample int,sample_int
+sample float,sample_float
+sample long,sample_long
+sample bool,sample_bool
+sample str,sample_str"""
+
+REGISTER_MAP = """Register Name,Address,Type,Units,Writable,Default Value,Transform
+unsigned_short,0,uint16,None,TRUE,0,scale(10)
+unsigned_int,1,uint32,None,TRUE,0,scale(10)
+unsigned_long,3,uint64,None,TRUE,0,scale(10)
+sample_short,7,int16,None,TRUE,0,scale(10)
+sample_int,8,int32,None,TRUE,0,scale(10)
+sample_float,10,float,None,TRUE,0.0,scale(10)
+sample_long,12,int64,None,TRUE,0,scale(10)
+sample_bool,16,bool,None,TRUE,False,
+sample_str,17,string[12],None,TRUE,hello world!,"""
+
+
+# Register values dictionary for testing set_point and get_point
+registers_dict = {"unsigned short": 65530,
+                  "unsigned int": 4294967290,
+                  "unsigned long": 184467440737090,
+                  "sample short": -32760,
+                  "sample int": -2147483640,
+                  "sample float": -12340.0,
+                  "sample long": -922337203685470,
+                  "sample bool": True,
+                  "sample str": "SampleString"}
 
 @pytest.fixture(scope="module")
 def outstation_app():
@@ -82,6 +116,78 @@ def master_app():
     yield master_appl
     # clean-up
     master_appl.shutdown()
+
+
+@pytest.fixture(scope="module")
+def agent(request, volttron_instance):
+    """
+    Build PlatformDriverAgent, add modbus driver & csv configurations
+    """
+
+    # Build platform driver agent
+    md_agent = volttron_instance.build_agent(identity="test_md_agent")
+    capabilities = {'edit_config_store': {'identity': PLATFORM_DRIVER}}
+    volttron_instance.add_capabilities(md_agent.core.publickey, capabilities)
+
+    # Clean out platform driver configurations
+    # wait for it to return before adding new config
+    md_agent.vip.rpc.call('config.store',
+                          'manage_delete_store',
+                          PLATFORM_DRIVER).get()
+
+    # Add driver configurations
+    md_agent.vip.rpc.call('config.store',
+                          'manage_store',
+                          PLATFORM_DRIVER,
+                          'devices/modbus_tk',
+                          jsonapi.dumps(DRIVER_CONFIG),
+                          config_type='json')
+
+    # md_agent.vip.rpc.call('config.store',
+    #                       'manage_store',
+    #                       PLATFORM_DRIVER,
+    #                       'devices/modbus',
+    #                       jsonapi.dumps(OLD_VOLTTRON_DRIVER_CONFIG),
+    #                       config_type='json')
+
+    # Add csv configurations
+    md_agent.vip.rpc.call('config.store',
+                          'manage_store',
+                          PLATFORM_DRIVER,
+                          'modbus_tk.csv',
+                          REGISTRY_CONFIG_STRING,
+                          config_type='csv')
+
+    md_agent.vip.rpc.call('config.store',
+                          'manage_store',
+                          PLATFORM_DRIVER,
+                          'modbus_tk_map.csv',
+                          REGISTER_MAP,
+                          config_type='csv')
+
+    # md_agent.vip.rpc.call('config.store',
+    #                       'manage_store',
+    #                       PLATFORM_DRIVER,
+    #                       'modbus.csv',
+    #                       OLD_VOLTTRON_REGISTRY_CONFIG,
+    #                       config_type='csv')
+
+    platform_uuid = volttron_instance.install_agent(
+        agent_dir=get_services_core("PlatformDriverAgent"),
+        config_file={},
+        start=True)
+
+    gevent.sleep(10)  # wait for the agent to start and start the devices
+
+    def stop():
+        """
+        Stop platform driver agent
+        """
+        volttron_instance.stop_agent(platform_uuid)
+        md_agent.core.stop()
+
+    request.addfinalizer(stop)
+    return md_agent
 
 
 class TestStation:
