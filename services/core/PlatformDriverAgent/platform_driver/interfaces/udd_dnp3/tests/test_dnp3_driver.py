@@ -33,6 +33,15 @@ class TestDummy:
     def test_dummy(self):
         print("I am a silly dummy test.")
 
+class TestDummyAgentFixture:
+    """
+    Dummy test to check pytest setup
+    """
+
+    def test_agent_dummy(self, agent):
+        print("I am a agent dummy test.")
+        print(f"======agent {agent}")
+
 
 DRIVER_CONFIG = {
     "driver_config": {"master_ip": "0.0.0.0", "outstation_ip": "127.0.0.1",
@@ -119,24 +128,30 @@ def master_app():
 
 
 @pytest.fixture(scope="module")
-def agent(request, volttron_instance):
+def agent(volttron_instance):
     """
     Build PlatformDriverAgent, add modbus driver & csv configurations
     """
 
     # Build platform driver agent
-    md_agent = volttron_instance.build_agent(identity="test_md_agent")
+    tester_agent = volttron_instance.build_agent(identity="test_dnp3_agent")
     capabilities = {'edit_config_store': {'identity': PLATFORM_DRIVER}}
-    volttron_instance.add_capabilities(md_agent.core.publickey, capabilities)
+    volttron_instance.add_capabilities(tester_agent.core.publickey, capabilities)
 
     # Clean out platform driver configurations
     # wait for it to return before adding new config
-    md_agent.vip.rpc.call('config.store',
-                          'manage_delete_store',
-                          PLATFORM_DRIVER).get()
+    # vip_agent.vip.rpc.call('config.store',
+    #                       'manage_delete_store',
+    #                       PLATFORM_DRIVER).get()
+
+    # List platformdriver configurations
+    config_lists_pre = tester_agent.vip.rpc.call('config.store',
+                                             method='manage_list_configs',
+                                             identity=PLATFORM_DRIVER,).get()
+    print(f"==========config_lists{config_lists_pre}")
 
     # Add driver configurations
-    md_agent.vip.rpc.call('config.store',
+    tester_agent.vip.rpc.call('config.store',
                           'manage_store',
                           PLATFORM_DRIVER,
                           'devices/modbus_tk',
@@ -151,19 +166,26 @@ def agent(request, volttron_instance):
     #                       config_type='json')
 
     # Add csv configurations
-    md_agent.vip.rpc.call('config.store',
+    tester_agent.vip.rpc.call('config.store',
                           'manage_store',
                           PLATFORM_DRIVER,
                           'modbus_tk.csv',
                           REGISTRY_CONFIG_STRING,
                           config_type='csv')
 
-    md_agent.vip.rpc.call('config.store',
+    tester_agent.vip.rpc.call('config.store',
                           'manage_store',
                           PLATFORM_DRIVER,
                           'modbus_tk_map.csv',
                           REGISTER_MAP,
                           config_type='csv')
+
+    config_lists_post = tester_agent.vip.rpc.call('config.store',
+                                                 method='manage_list_configs',
+                                                 identity=PLATFORM_DRIVER, ).get()
+    print(f"==========config_lists{config_lists_post}")
+
+
 
     # md_agent.vip.rpc.call('config.store',
     #                       'manage_store',
@@ -184,10 +206,10 @@ def agent(request, volttron_instance):
         Stop platform driver agent
         """
         volttron_instance.stop_agent(platform_uuid)
-        md_agent.core.stop()
+        tester_agent.core.stop()
 
     request.addfinalizer(stop)
-    return md_agent
+    return tester_agent
 
 
 class TestStation:
