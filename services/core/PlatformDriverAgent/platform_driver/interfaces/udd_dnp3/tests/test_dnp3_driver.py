@@ -128,7 +128,7 @@ def master_app():
 
 
 @pytest.fixture(scope="module")
-def agent(volttron_instance):
+def agent(request, volttron_instance):
     """
     Build PlatformDriverAgent, add modbus driver & csv configurations
     """
