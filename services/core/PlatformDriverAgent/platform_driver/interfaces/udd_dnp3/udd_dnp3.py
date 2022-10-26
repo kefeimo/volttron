@@ -17,6 +17,9 @@ import logging
 import random
 import sys
 
+# from dnp3_python.dnp3station.master_new import MyMasterNew
+from .pydnp3.src.dnp3_python.dnp3station.master_new import MyMasterNew
+
 from datetime import datetime
 
 
@@ -31,13 +34,13 @@ _log.setLevel(logging.WARNING)
 _log.setLevel(logging.ERROR)
 
 
-try:
-    from pydnp3 import opendnp3
-    # from .dnp3_python.master_new import MyMasterNew
-    from .pydnp3.src.dnp3_python.master_new import MyMasterNew
-    # from .dnp3_python.outstation_new import MyOutStationNew
-except ImportError as e:
-    _log.error(e)
+# try:
+#     from pydnp3 import opendnp3
+#     # from .dnp3_python.master_new import MyMasterNew
+#     from .pydnp3.src.dnp3_python.dnp3station.master_new import MyMasterNew
+#     # from .dnp3_python.outstation_new import MyOutStationNew
+# except ImportError as e:
+#     _log.error(e)
 
 
 # TODO-developer: Your code here
@@ -232,3 +235,54 @@ class Interface(WrapperInterface):
         """
         set_pt_response = register.set_register_value(value=value_to_set)
         return set_pt_response
+
+    # def get_point(self, point_name, **kwargs):
+    #     # TODO: clean up
+    #     pass
+    #     return 2.453
+
+#     def get_point(self, point_name, **kwargs) -> RegisterValue:
+#         # TODO: clean up
+#         """
+#         Override BasicInvert method
+#         Note: this method should be evoked by vip agent
+#         EXAMPLE:
+#             rs = a.vip.rpc.call("platform.driver", "get_point",
+#               "campus-vm/building-vm/Dnp3",
+#                "AnalogInput_index0").get()
+#         """
+#         register: ImplementedRegister = self.get_register_by_name(point_name)
+#         val = self.get_reg_point(register)
+#         # return val
+#         return 11873.329
+#
+#     def get_register_by_name(self, name: str) -> WrapperRegister:
+#         # TODO: clean up
+#         """
+#         Get a register by it's point name.
+#
+#         :param name: Point name of register.
+#         :type name: str
+#         :return: An instance of BaseRegister
+#         :rtype: :py:class:`BaseRegister`
+#         """
+#         try:
+#             return self.point_map[name]
+#         except KeyError:
+#             raise DriverInterfaceError("Point not configured on device: " + name)
+#
+#     def insert_register(self, register: WrapperRegister):
+#         """
+#         Inserts a register into the :py:class:`Interface`.
+#
+#         :param register: Register to add to the interface.
+#         :type register: :py:class:`BaseRegister`
+#         """
+#         register_point: str = register.point_name
+#         self.point_map[register_point] = register
+#
+#         register_type = register.get_register_type()
+#         self.registers[register_type].append(register)
+#
+# class DriverInterfaceError(Exception):
+#     pass

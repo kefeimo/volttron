@@ -12,18 +12,17 @@ from volttron.platform import get_services_core, jsonapi
 # from platform_driver.interfaces.modbus_tk.server import Server
 # from platform_driver.interfaces.modbus_tk.maps import Map, Catalog
 from volttron.platform.agent.known_identities import PLATFORM_DRIVER
+from platform_driver.interfaces. \
+    udd_dnp3 import UserDevelopRegisterDnp3
+from platform_driver.interfaces.\
+    udd_dnp3 import Interface as DNP3Interface
 
 # from services.core.PlatformDriverAgent.platform_driver.interfaces import udd_dnp3
-from services.core.PlatformDriverAgent.platform_driver.interfaces. \
-    udd_dnp3.pydnp3.src.dnp3_python.outstation_new import MyOutStationNew
-from services.core.PlatformDriverAgent.platform_driver.interfaces. \
-    udd_dnp3.pydnp3.src.dnp3_python.master_new import MyMasterNew
-from services.core.PlatformDriverAgent.platform_driver.interfaces. \
-    udd_dnp3.udd_dnp3 import UserDevelopRegisterDnp3
-from pydnp3 import opendnp3
-from services.core.PlatformDriverAgent.platform_driver.interfaces.\
-    udd_dnp3.udd_dnp3 import Interface as DNP3Interface
+from dnp3_python.dnp3station.outstation_new import MyOutStationNew
+from dnp3_python.dnp3station.master_new import MyMasterNew
 
+
+from pydnp3 import opendnp3
 
 class TestDummy:
     """
@@ -33,65 +32,55 @@ class TestDummy:
     def test_dummy(self):
         print("I am a silly dummy test.")
 
-class TestDummyAgentFixture:
-    """
-    Dummy test to check pytest setup
-    """
 
-    def test_agent_dummy(self, agent):
-        print("I am a agent dummy test.")
-        print(f"======agent {agent}")
+# DNP3_DRIVER_CONFIG = {
+#     "driver_config": {"master_ip": "0.0.0.0", "outstation_ip": "127.0.0.1",
+#                       "master_id": 2, "outstation_id": 1,
+#                       "port": 20000},
+#     "registry_config": "config://udd-Dnp3-testing.csv",
+#     "driver_type": "udd_dnp3",
+#     "interval": 5,
+#     "timezone": "UTC",
+#     # "campus": "campus-testing",
+#     # "building": "building-testing",
+#     # "unit": "Dnp3-testing",
+#     "heart_beat_point": "random_bool"
+# }
 
+json_path = "/home/kefei/project/volttron/services/core/PlatformDriverAgent/platform_driver/interfaces/udd_dnp3/tests/testing_data/udd-Dnp3-testing.config"
 
-DRIVER_CONFIG = {
-    "driver_config": {"master_ip": "0.0.0.0", "outstation_ip": "127.0.0.1",
-                      "master_id": 2, "outstation_id": 1,
-                      "port": 20000},
-    "registry_config": "config://udd-Dnp3.csv",
-    "driver_type": "udd_dnp3",
-    "interval": 5,
-    "timezone": "UTC",
-    "campus": "campus-vm",
-    "building": "building-vm",
-    "unit": "Dnp3",
-    "publish_depth_first_all": True,
-    "heart_beat_point": "random_bool"
-}
+with open(json_path, "r") as f:
+    json_config_str = f.read()
+DNP3_DRIVER_CONFIG = json_config_str
 
-# New modbus_tk csv config
-REGISTRY_CONFIG_STRING = """Volttron Point Name,Register Name
-unsigned short,unsigned_short
-unsigned int,unsigned_int
-unsigned long,unsigned_long
-sample short,sample_short
-sample int,sample_int
-sample float,sample_float
-sample long,sample_long
-sample bool,sample_bool
-sample str,sample_str"""
+csv_path = "/home/kefei/project/volttron/services/core/PlatformDriverAgent/platform_driver/interfaces/udd_dnp3/tests/testing_data/udd-Dnp3-testing.csv"
 
-REGISTER_MAP = """Register Name,Address,Type,Units,Writable,Default Value,Transform
-unsigned_short,0,uint16,None,TRUE,0,scale(10)
-unsigned_int,1,uint32,None,TRUE,0,scale(10)
-unsigned_long,3,uint64,None,TRUE,0,scale(10)
-sample_short,7,int16,None,TRUE,0,scale(10)
-sample_int,8,int32,None,TRUE,0,scale(10)
-sample_float,10,float,None,TRUE,0.0,scale(10)
-sample_long,12,int64,None,TRUE,0,scale(10)
-sample_bool,16,bool,None,TRUE,False,
-sample_str,17,string[12],None,TRUE,hello world!,"""
+with open(csv_path, "r") as f:
+    csv_config_str = f.read()
+
+DNP3_REGISTER_MAP = csv_config_str
 
 
-# Register values dictionary for testing set_point and get_point
-registers_dict = {"unsigned short": 65530,
-                  "unsigned int": 4294967290,
-                  "unsigned long": 184467440737090,
-                  "sample short": -32760,
-                  "sample int": -2147483640,
-                  "sample float": -12340.0,
-                  "sample long": -922337203685470,
-                  "sample bool": True,
-                  "sample str": "SampleString"}
+# DNP3_REGISTER_MAP = """Point Name,Volttron Point Name,Group,Variation,Index,Scaling,Units,Writable,Notes
+# AnalogInput_index0,AnalogInput_index0,30,6,0,1,NA,FALSE,Double Analogue input without status
+# AnalogInput_index1,AnalogInput_index1,30,6,1,1,NA,FALSE,Double Analogue input without status
+# AnalogInput_index2,AnalogInput_index2,30,6,2,1,NA,FALSE,Double Analogue input without status
+# AnalogInput_index3,AnalogInput_index3,30,6,3,1,NA,FALSE,Double Analogue input without status
+# BinaryInput_index0,BinaryInput_index0,1,2,0,1,NA,FALSE,Single bit binary input with status
+# BinaryInput_index1,BinaryInput_index1,1,2,1,1,NA,FALSE,Single bit binary input with status
+# BinaryInput_index2,BinaryInput_index2,1,2,2,1,NA,FALSE,Single bit binary input with status
+# BinaryInput_index3,BinaryInput_index3,1,2,3,1,NA,FALSE,Single bit binary input with status
+# AnalogOutput_index0,AnalogOutput_index0,40,4,0,1,NA,TRUE,Double-precision floating point with flags
+# AnalogOutput_index1,AnalogOutput_index1,40,4,1,1,NA,TRUE,Double-precision floating point with flags
+# AnalogOutput_index2,AnalogOutput_index2,40,4,2,1,NA,TRUE,Double-precision floating point with flags
+# AnalogOutput_index3,AnalogOutput_index3,40,4,3,1,NA,TRUE,Double-precision floating point with flags
+# BinaryOutput_index0,BinaryOutput_index0,10,2,0,1,NA,TRUE,Binary Output with flags
+# BinaryOutput_index1,BinaryOutput_index1,10,2,1,1,NA,TRUE,Binary Output with flags
+# BinaryOutput_index2,BinaryOutput_index2,10,2,2,1,NA,TRUE,Binary Output with flags
+# BinaryOutput_index3,BinaryOutput_index3,10,2,3,1,NA,TRUE,Binary Output with flags"""
+
+
+
 
 @pytest.fixture(scope="module")
 def outstation_app():
@@ -127,22 +116,71 @@ def master_app():
     master_appl.shutdown()
 
 
-@pytest.fixture(scope="module")
-def agent(request, volttron_instance):
+class TestAgentFixture:
     """
-    Build PlatformDriverAgent, add modbus driver & csv configurations
+    Dummy test to check agent fixture setup
+    """
+    pass
+
+
+@pytest.fixture
+def dnp3_driver_config_str():
+    """
+    DRIVER_CONFIG
+    associated with `driver_config` in driver-config.config (json-like file)
+                    user inputs are put here, e.g., IP address, url, etc.
+    """
+    json_path = Path("./testing_data/udd-Dnp3-testing.config")
+    with open(json_path, 'r', encoding='utf-8') as f:
+        driver_config = f.read()
+    return driver_config
+
+
+@pytest.fixture
+def dnp3_csv_config_str():
+    """
+    REGISTER_MAP
+    associated with the whole driver-config.csv file
+    """
+    csv_path = Path("./testing_data/udd-Dnp3-testing.csv")
+    with open(csv_path, 'r', encoding='utf-8') as f:
+        csv_config = f.read()
+    return csv_config
+
+
+def test_dnp3_csv_config_str(dnp3_csv_config_str, dnp3_driver_config_str):
+    print("I am a agent dummy test.")
+    print(f"======dnp3_csv_config_str {dnp3_csv_config_str}")
+    print(f"======dnp3_driver_config_str {dnp3_driver_config_str}")
+
+
+def test_agent(agent):
+    print("I am a agent dummy test.")
+    # print(f"======agent {agent}")
+
+
+
+@pytest.fixture(scope="module")
+def agent(request, volttron_instance,
+          ):
+    """
+    Build PlatformDriverAgent, add dnp3 driver & csv configurations
     """
 
     # Build platform driver agent
     tester_agent = volttron_instance.build_agent(identity="test_dnp3_agent")
+
+    # Note: add_capabilities may cause test fail for agent fixture
+    # (i.e., (messagebus='rmq', ssl_auth=True), (messagebus='zmq', auth_enabled=False))
     capabilities = {'edit_config_store': {'identity': PLATFORM_DRIVER}}
     volttron_instance.add_capabilities(tester_agent.core.publickey, capabilities)
 
     # Clean out platform driver configurations
     # wait for it to return before adding new config
-    # vip_agent.vip.rpc.call('config.store',
+    # .call('config.store',
     #                       'manage_delete_store',
     #                       PLATFORM_DRIVER).get()
+
 
     # List platformdriver configurations
     config_lists_pre = tester_agent.vip.rpc.call('config.store',
@@ -152,11 +190,11 @@ def agent(request, volttron_instance):
 
     # Add driver configurations
     tester_agent.vip.rpc.call('config.store',
-                          'manage_store',
-                          PLATFORM_DRIVER,
-                          'devices/modbus_tk',
-                          jsonapi.dumps(DRIVER_CONFIG),
-                          config_type='json')
+                              'manage_store',
+                              PLATFORM_DRIVER,
+                              'devices/campus-vm/building-vm/Dnp3',
+                              DNP3_DRIVER_CONFIG,
+                              config_type='json')
 
     # md_agent.vip.rpc.call('config.store',
     #                       'manage_store',
@@ -167,24 +205,32 @@ def agent(request, volttron_instance):
 
     # Add csv configurations
     tester_agent.vip.rpc.call('config.store',
-                          'manage_store',
-                          PLATFORM_DRIVER,
-                          'modbus_tk.csv',
-                          REGISTRY_CONFIG_STRING,
-                          config_type='csv')
+                              'manage_store',
+                              PLATFORM_DRIVER,
+                              'udd-Dnp3.csv',
+                              DNP3_REGISTER_MAP,
+                              config_type='csv')
 
-    tester_agent.vip.rpc.call('config.store',
-                          'manage_store',
-                          PLATFORM_DRIVER,
-                          'modbus_tk_map.csv',
-                          REGISTER_MAP,
-                          config_type='csv')
+
 
     config_lists_post = tester_agent.vip.rpc.call('config.store',
                                                  method='manage_list_configs',
                                                  identity=PLATFORM_DRIVER, ).get()
     print(f"==========config_lists{config_lists_post}")
 
+    # config_csv = tester_agent.vip.rpc.call('config.store',
+    #                                               method='manage_get',
+    #                                               identity=PLATFORM_DRIVER,
+    #                                               config_name="udd-Dnp3-testing.csv").get()
+    # print(f"==========config_csv{config_csv}")
+    #
+    # config_json = tester_agent.vip.rpc.call('config.store',
+    #                                        method='manage_get',
+    #                                        identity=PLATFORM_DRIVER,
+    #                                        config_name="devices/udd_dnp3",
+    #                                         # config_name="devices/campus-testing/building-testing/Dnp3-testing"
+    #                                         ).get()
+    # print(f"==========config_json{config_json}")
 
 
     # md_agent.vip.rpc.call('config.store',
@@ -212,9 +258,34 @@ def agent(request, volttron_instance):
     return tester_agent
 
 
+def test_agent_get(agent, outstation_app):
+    print("I am a agent dummy test.")
+
+    analog_input_val = 445.33
+    outstation_app.apply_update(opendnp3.Analog(value=analog_input_val), index=0)
+
+    config_lists_post = agent.vip.rpc.call('config.store',
+                                                  method='manage_list_configs',
+                                                  identity=PLATFORM_DRIVER, ).get()
+    print(f"=+++++++++config_lists{config_lists_post}")
+
+    # Note: need to explicitly create master station by calling configuration
+    # TODO: create master should be in init. (refactor this.)
+
+
+    try:
+        res_get = agent.vip.rpc.call("platform.driver", "get_point",
+                       "campus-vm/building-vm/Dnp3",
+                       "AnalogInput_index0").get(timeout=60)
+
+        print(f"+++++++++++++res_get{res_get}")
+    except Exception as e:
+        print(f"+++++++++++++e{e}")
+
+
 class TestStation:
     """
-    Testing the underlying pydnp3 package station-related fuctions.
+    Testing the underlying pydnp3 package station-related functions.
     """
 
     def test_station_init(self, master_app, outstation_app):
@@ -298,7 +369,7 @@ def driver_config_in_json_config():
     associated with `driver_config` in driver-config.config (json-like file)
                     user inputs are put here, e.g., IP address, url, etc.
     """
-    json_path = Path("./testing_data/udd-Dnp3.config")
+    json_path = Path("./testing_data/udd-Dnp3-testing.config")
     with open(json_path) as json_f:
         driver_config = json.load(json_f)
     k = "driver_config"
@@ -310,7 +381,7 @@ def csv_config():
     """
     associated with the whole driver-config.csv file
     """
-    csv_path = Path("./testing_data/udd-Dnp3.csv")
+    csv_path = Path("./testing_data/udd-Dnp3-testing.csv")
     with open(csv_path) as f:
         reader = csv.DictReader(f, delimiter=',')
         csv_config = [row for row in reader]
