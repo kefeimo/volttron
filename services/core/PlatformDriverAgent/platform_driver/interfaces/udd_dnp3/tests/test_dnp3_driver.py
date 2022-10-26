@@ -14,15 +14,18 @@ from volttron.platform import get_services_core, jsonapi
 from volttron.platform.agent.known_identities import PLATFORM_DRIVER
 
 # from services.core.PlatformDriverAgent.platform_driver.interfaces import udd_dnp3
+# from services.core.PlatformDriverAgent.platform_driver.interfaces. \
+#     udd_dnp3.pydnp3.src.dnp3_python.outstation_new import MyOutStationNew
+# from services.core.PlatformDriverAgent.platform_driver.interfaces. \
+#     udd_dnp3.pydnp3.src.dnp3_python.master_new import MyMasterNew
 from services.core.PlatformDriverAgent.platform_driver.interfaces. \
-    udd_dnp3.pydnp3.src.dnp3_python.outstation_new import MyOutStationNew
-from services.core.PlatformDriverAgent.platform_driver.interfaces. \
-    udd_dnp3.pydnp3.src.dnp3_python.master_new import MyMasterNew
-from services.core.PlatformDriverAgent.platform_driver.interfaces. \
-    udd_dnp3.udd_dnp3 import UserDevelopRegisterDnp3
+    udd_dnp3 import UserDevelopRegisterDnp3
 from pydnp3 import opendnp3
 from services.core.PlatformDriverAgent.platform_driver.interfaces.\
     udd_dnp3.udd_dnp3 import Interface as DNP3Interface
+
+from dnp3_python.dnp3station.master_new import MyMasterNew
+from dnp3_python.dnp3station.outstation_new import MyOutStationNew
 
 
 class TestDummy:
@@ -33,14 +36,7 @@ class TestDummy:
     def test_dummy(self):
         print("I am a silly dummy test.")
 
-class TestDummyAgentFixture:
-    """
-    Dummy test to check pytest setup
-    """
 
-    def test_agent_dummy(self, agent):
-        print("I am a agent dummy test.")
-        print(f"======agent {agent}")
 
 
 DRIVER_CONFIG = {
@@ -126,6 +122,19 @@ def master_app():
     # clean-up
     master_appl.shutdown()
 
+
+class TestDummyAgentFixture:
+    """
+    Dummy test to check pytest setup
+    """
+
+    def test_agent_dummy(self, agent):
+        print("I am a agent dummy test.")
+        print(f"======agent {agent}")
+
+    def test_agent_get(self, agent):
+        print("I am a agent dummy test.")
+        print(f"======agent {agent}")
 
 @pytest.fixture(scope="module")
 def agent(request, volttron_instance):

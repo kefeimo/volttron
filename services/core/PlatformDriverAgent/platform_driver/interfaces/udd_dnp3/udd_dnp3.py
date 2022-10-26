@@ -7,6 +7,8 @@ from typing import List, Optional, Dict
 import random
 import requests
 
+from dnp3_python.dnp3station.master_new import MyMasterNew
+
 from .driver_wrapper import WrapperInterfaceNew
 
 # TODO-developer: Your code here
@@ -31,13 +33,13 @@ _log.setLevel(logging.WARNING)
 _log.setLevel(logging.ERROR)
 
 
-try:
-    from pydnp3 import opendnp3
-    # from .dnp3_python.master_new import MyMasterNew
-    from .pydnp3.src.dnp3_python.master_new import MyMasterNew
-    # from .dnp3_python.outstation_new import MyOutStationNew
-except ImportError as e:
-    _log.error(e)
+# try:
+#     from pydnp3 import opendnp3
+#     # from .dnp3_python.master_new import MyMasterNew
+#     from .pydnp3.src.dnp3_python.master_new import MyMasterNew
+#     # from .dnp3_python.outstation_new import MyOutStationNew
+# except ImportError as e:
+#     _log.error(e)
 
 
 # TODO-developer: Your code here
