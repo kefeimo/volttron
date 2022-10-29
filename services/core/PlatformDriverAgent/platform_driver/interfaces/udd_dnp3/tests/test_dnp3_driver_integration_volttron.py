@@ -122,7 +122,7 @@ class TestDummyAgentFixture:
         print("I am a fixture agent dummy test.")
 
 
-@pytest.mark.skip(reason="not ready")
+# @pytest.mark.skip(reason="not ready")
 class TestDnp3DriverRPC:
     # @pytest.mark.parametrize('outstation_app', [30000],
     #                          indirect=True
@@ -641,26 +641,26 @@ class TestDNP3InterfaceNaive:
             assert val_get == val_update
 
 
-# @pytest.fixture()
-# def outstation_shutdown_dummy():
-#     """
-#     Note: Due to the fact that pydnp3 is a cpp binding,
-#     shutdown is controlled by binary code will halt the whole process
-#     Use this dummy outstation with shutdown process to shut down just once.
-#     """
-#     # Note: allow parsing argument to fixture change port number using `request.param`
-#
-#     outstation_appl = MyOutStationNew(port=20002)  # Note: using default port 20000
-#     outstation_appl.start()
-#     # time.sleep(3)
-#     yield outstation_appl
-#
-#     outstation_appl.shutdown()
-#
-#
-# def test_helper_for_shutdown(outstation_shutdown_dummy):
-#     """
-#     Note: this test needs to perform at last
-#     """
-#
-#     pass
+@pytest.fixture()
+def outstation_shutdown_dummy():
+    """
+    Note: Due to the fact that pydnp3 is a cpp binding,
+    shutdown is controlled by binary code will halt the whole process
+    Use this dummy outstation with shutdown process to shut down just once.
+    """
+    # Note: allow parsing argument to fixture change port number using `request.param`
+
+    outstation_appl = MyOutStationNew(port=20002)  # Note: using default port 20000
+    outstation_appl.start()
+    # time.sleep(3)
+    yield outstation_appl
+
+    outstation_appl.shutdown()
+
+
+def test_helper_for_shutdown(outstation_shutdown_dummy):
+    """
+    Note: this test needs to perform at last
+    """
+
+    pass
