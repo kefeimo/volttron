@@ -7,17 +7,6 @@ import json
 from pathlib import Path
 import random
 
-# from volttrontesting.utils.utils import get_rand_ip_and_port
-from volttron.platform import get_services_core, jsonapi
-# from platform_driver.interfaces.modbus_tk.server import Server
-# from platform_driver.interfaces.modbus_tk.maps import Map, Catalog
-from volttron.platform.agent.known_identities import PLATFORM_DRIVER
-
-# from services.core.PlatformDriverAgent.platform_driver.interfaces import udd_dnp3
-# from services.core.PlatformDriverAgent.platform_driver.interfaces. \
-#     udd_dnp3.pydnp3.src.dnp3_python.outstation_new import MyOutStationNew
-# from services.core.PlatformDriverAgent.platform_driver.interfaces. \
-#     udd_dnp3.pydnp3.src.dnp3_python.master_new import MyMasterNew
 from services.core.PlatformDriverAgent.platform_driver.interfaces. \
     udd_dnp3 import UserDevelopRegisterDnp3
 from pydnp3 import opendnp3
@@ -27,8 +16,9 @@ from services.core.PlatformDriverAgent.platform_driver.interfaces. \
 from dnp3_python.dnp3station.master_new import MyMasterNew
 from dnp3_python.dnp3station.outstation_new import MyOutStationNew
 
+import os
 
-# TODO: add IP, port pool to avoid conflict
+TEST_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 class TestDummy:
@@ -59,35 +49,12 @@ def outstation_app(request):
     # time.sleep(3)
     yield outstation_appl
     # clean-up
-    # note: will cause "Fatal Python error: Aborted" Cannot capture
-    # num_con_open_to_outstation = outstation_appl.channel.GetStatistics().channel.numOpen
-    # print(f"+++++++++++num_con_open {num_con_open_to_outstation}")
-    # count = 10
-    # while count > 0:
-    #     count -= 1
-    #     if num_con_open_to_outstation <= 0:
-    #         outstation_appl.shutdown()
-    # outstation_appl.shutdown()
+    outstation_appl.shutdown()
+
 
 @pytest.fixture(
-    scope="module"
+    # scope="module"
 )
-def outstation_app_p30000(request):
-    """
-    outstation using default configuration (including default database)
-    Note: since outstation cannot shut down gracefully,
-    outstation_app fixture need to in "module" scope to prevent interrupting pytest during outstation shut-down
-    """
-    # Note: allow parsing argument to fixture change port number using `request.param`
-    port = 30000
-    outstation_appl = MyOutStationNew(port=port)  # Note: using default port 20000
-    outstation_appl.start()
-    # time.sleep(3)
-    yield outstation_appl
-
-    # outstation_appl.shutdown()
-
-@pytest.fixture
 def master_app(request):
     """
     master station using default configuration
@@ -110,112 +77,6 @@ def master_app(request):
     # clean-up
     master_appl.shutdown()
     time.sleep(1)
-
-
-@pytest.mark.skip(reason="only for debugging purpose")
-class TestDummyAgentFixture:
-    """
-    Dummy test to check VOLTTRON agent (carry on test VOLTTRON instance) setup
-    """
-
-    def test_agent_dummy(self, dnp3_tester_agent):
-        print("I am a fixture agent dummy test.")
-
-
-@pytest.mark.skip(reason="not ready")
-class TestDnp3DriverRPC:
-    # @pytest.mark.parametrize('outstation_app', [30000],
-    #                          indirect=True
-    #                          )
-    def test_interface_get(self,
-            dnp3_tester_agent,
-            outstation_app_p30000,
-            # master_app
-    ):
-        print("I am a agent dummy test.")
-        # print(f"======agent {agent}")
-
-        # outstation_app = MyOutStationNew()
-        val_update = 4.3221
-        outstation_app_p30000.apply_update(opendnp3.Analog(value=val_update,
-                                                    flags=opendnp3.Flags(24),
-                                                    time=opendnp3.DNPTime(3094)),
-                                    index=0)
-
-        time.sleep(3)
-
-        res_val = dnp3_tester_agent.vip.rpc.call("platform.driver", "get_point",
-                                                 "campus-vm/building-vm/Dnp3",
-                                                 "AnalogInput_index0").get(timeout=10)
-
-        print(f"======res_val {res_val}")
-
-
-# @pytest.fixture(scope="module")
-@pytest.fixture
-def dnp3_tester_agent(request, volttron_instance):
-    """
-    Build PlatformDriverAgent, add modbus driver & csv configurations
-    """
-
-    # Build platform driver agent
-    tester_agent = volttron_instance.build_agent(identity="test_dnp3_agent")
-    capabilities = {'edit_config_store': {'identity': PLATFORM_DRIVER}}
-    volttron_instance.add_capabilities(tester_agent.core.publickey, capabilities)
-
-    # Clean out platform driver configurations
-    # wait for it to return before adding new config
-    tester_agent.vip.rpc.call(peer='config.store',
-                              method='manage_delete_store',
-                              identity=PLATFORM_DRIVER).get()
-
-    json_config_path = "./testing_data/udd-Dnp3-port30000.config"
-    with open(json_config_path, "r") as f:
-        json_str = f.read()
-
-    csv_config_path = "./testing_data/udd-Dnp3.csv"
-    with open(csv_config_path, "r") as f:
-        csv_str = f.read()
-
-    tester_agent.vip.rpc.call(peer='config.store',
-                              method='manage_store',
-                              identity=PLATFORM_DRIVER,
-                              config_name="udd-Dnp3.csv",
-                              raw_contents=csv_str,
-                              config_type='csv'
-                              ).get(timeout=5)
-
-    tester_agent.vip.rpc.call('config.store',
-                   method='manage_store',
-                   identity=PLATFORM_DRIVER,
-                   config_name="devices/campus-vm/building-vm/Dnp3",
-                   raw_contents=json_str,
-                   config_type='json'
-                   ).get(timeout=5)
-
-    # # List platform driver configurations (for debug)
-    # config_lists = tester_agent.vip.rpc.call('config.store',
-    #                                          method='manage_list_configs',
-    #                                          identity=PLATFORM_DRIVER, ).get()
-    # print(f"==========config_lists{config_lists}")
-
-    platform_uuid = volttron_instance.install_agent(
-        agent_dir=get_services_core("PlatformDriverAgent"),
-        config_file={},
-        start=True)
-
-    # gevent.sleep(10)  # wait for the agent to start and start the devices
-    # time.sleep(10)  # wait for the agent to start and start the devices
-
-    def stop():
-        """
-        Stop platform driver agent
-        """
-        volttron_instance.stop_agent(platform_uuid)
-        tester_agent.core.stop()
-
-    yield tester_agent
-    request.addfinalizer(stop)
 
 
 class TestStation:
@@ -305,6 +166,7 @@ def driver_config_in_json_config():
                     user inputs are put here, e.g., IP address, url, etc.
     """
     json_path = Path("./testing_data/udd-Dnp3.config")
+    json_path = Path(TEST_DIR, json_path)
     with open(json_path) as json_f:
         driver_config = json.load(json_f)
     k = "driver_config"
@@ -317,6 +179,7 @@ def csv_config():
     associated with the whole driver-config.csv file
     """
     csv_path = Path("./testing_data/udd-Dnp3.csv")
+    csv_path = Path(TEST_DIR, csv_path)
     with open(csv_path) as f:
         reader = csv.DictReader(f, delimiter=',')
         csv_config = [row for row in reader]
@@ -639,28 +502,3 @@ class TestDNP3InterfaceNaive:
             # print("======== dnp3_register.value", dnp3_register.value)
             # print("===========val_get, val_update", val_get, val_update)
             assert val_get == val_update
-
-
-# @pytest.fixture()
-# def outstation_shutdown_dummy():
-#     """
-#     Note: Due to the fact that pydnp3 is a cpp binding,
-#     shutdown is controlled by binary code will halt the whole process
-#     Use this dummy outstation with shutdown process to shut down just once.
-#     """
-#     # Note: allow parsing argument to fixture change port number using `request.param`
-#
-#     outstation_appl = MyOutStationNew(port=20002)  # Note: using default port 20000
-#     outstation_appl.start()
-#     # time.sleep(3)
-#     yield outstation_appl
-#
-#     outstation_appl.shutdown()
-#
-#
-# def test_helper_for_shutdown(outstation_shutdown_dummy):
-#     """
-#     Note: this test needs to perform at last
-#     """
-#
-#     pass
