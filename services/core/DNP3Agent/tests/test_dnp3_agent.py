@@ -177,6 +177,37 @@ def reset(agent):
     agent.vip.rpc.call(DNP3_AGENT_ID, 'reset').get()
 
 
+class TestDummy:
+
+    @staticmethod
+    def get_point_definitions(agent, point_names):
+        """Ask DNP3Agent for a list of point definitions."""
+        return agent.vip.rpc.call(DNP3_AGENT_ID, 'get_point_definitions', point_names).get(timeout=10)
+
+    def get_point_definition(self, agent, point_name):
+        """Confirm that the agent has a point definition named point_name. Return the definition."""
+        point_defs = self.get_point_definitions(agent, [point_name])
+        point_def = point_defs.get(point_name, None)
+        assert point_def is not None, "Agent has no point definition for {}".format(TEST_GET_POINT_NAME)
+        return point_def
+
+    def test_fixture_run_master(self, run_master):
+        pass
+        print(f"=====run_master {run_master}")
+
+    def test_fixture_agent(self, agent):
+        pass
+        print(f"=====agent {agent}")
+
+    def test_fixture_reset(self, reset):
+        pass
+        print(f"=====agent {reset}")
+
+    def test_get_point_definition(self, run_master, agent, reset):
+        """Ask the agent whether it has a point definition for a point name."""
+        self.get_point_definition(agent, TEST_GET_POINT_NAME)
+
+
 class TestDNP3Agent:
     """Regression tests for (non-MESA) DNP3Agent."""
 
