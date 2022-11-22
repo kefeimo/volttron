@@ -134,6 +134,83 @@ class Tester(Agent):
         """
         return self.setting1 + arg1 - arg2
 
+    @RPC.export
+    def rpc_test(self, arg1="1111", arg2="22222", kwarg1=None, kwarg2=None):
+        """
+        RPC method
+
+        May be called from another agent via self.core.rpc.call
+        """
+        # return self.setting1 + arg1 - arg2
+        print("++++++++++++++++  look at me, I am important")
+        return arg1 + arg2
+
+    @RPC.export
+    def rpc_demo_load_config(self):
+        """
+        RPC method
+
+        May be called from another agent via self.core.rpc.call
+        """
+        try:
+            config = utils.load_config("/home/kefei/project-local/volttron/TestAgent/config")
+        except Exception:
+            config = {}
+        return config
+
+    @RPC.export
+    def rpc_demo_config_list_set_get(self):
+        """
+        RPC method
+
+        May be called from another agent via self.core.rpc.call
+        """
+        default_config = {"setting1": "setting1-xxxxxxxxx",
+                          "setting2": "setting2-xxxxxxxxx"}
+
+        # Set a default configuration to ensure that self.configure is called immediately to setup
+        # the agent.
+        # self.vip.config.set_default("config", default_config)  # set_default can only be used before onstart
+        self.vip.config.set(config_name="config_2", contents=default_config,
+                            trigger_callback=False, send_update=True)
+        get_result = [
+            self.vip.config.get(config) for config in self.vip.config.list()
+        ]
+        return self.vip.config.list(), get_result
+
+    @RPC.export
+    def rpc_demo_config_set_default(self):
+        """
+        RPC method
+
+        May be called from another agent via self.core.rpc.call
+        """
+        default_config = {"setting1": "setting1-xxxxxxxxx",
+                               "setting2": "setting2-xxxxxxxxx"}
+
+        # Set a default configuration to ensure that self.configure is called immediately to setup
+        # the agent.
+        self.vip.config.set_default("config", default_config)
+        return self.vip.config.list()
+        # # Hook self.configure up to changes to the configuration file "config".
+        # self.vip.config.subscribe(self.configure, actions=["NEW", "UPDATE"], pattern="config")
+
+    @RPC.export
+    def rpc_demo_pubsub(self):
+        """
+        RPC method
+
+        May be called from another agent via self.core.rpc.call
+        """
+
+        pubsub_list = self.vip.pubsub.list('pubsub', 'some/topic/')
+        # # return pubsub_list
+        # self.vip.pubsub.publish('pubsub', 'some/topic/', message="+++++++++++++++++++++++++ something something")
+        # self.vip.pubsub.subscribe('pubsub', 'some/topic/', callable=self._handle_publish)
+        return pubsub_list
+        # # Hook self.configure up to changes to the configuration file "config".
+        # self.vip.config.subscribe(self.configure, actions=["NEW", "UPDATE"], pattern="config")
+
 
 def main():
     """Main method called to start the agent."""
