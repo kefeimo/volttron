@@ -90,6 +90,7 @@ class Tester(Agent):
         """
         self.vip.pubsub.unsubscribe("pubsub", None, None)
 
+        topic = "some/topic"
         self.vip.pubsub.subscribe(peer='pubsub',
                                   prefix=topic,
                                   callback=self._handle_publish)
@@ -98,7 +99,9 @@ class Tester(Agent):
         """
         Callback triggered by the subscription setup using the topic from the agent's config file
         """
-        pass
+        _log.debug(f" ++++++handleer++++++++++++++++++++++++++"
+                   f"peer {peer}, sender {sender}, bus {bus}, topic {topic}, "
+                   f"headers {headers}, message {message}")
 
     @Core.receiver("onstart")
     def onstart(self, sender, **kwargs):
@@ -116,6 +119,7 @@ class Tester(Agent):
         # Example RPC call
         # self.vip.rpc.call("some_agent", "some_method", arg1, arg2)
         pass
+        self._create_subscriptions(self.setting2)
 
     @Core.receiver("onstop")
     def onstop(self, sender, **kwargs):
@@ -203,11 +207,12 @@ class Tester(Agent):
         May be called from another agent via self.core.rpc.call
         """
 
-        pubsub_list = self.vip.pubsub.list('pubsub', 'some/topic/')
+        # pubsub_list = self.vip.pubsub.list('pubsub', 'some/')
+        # list(self, peer, prefix='', bus='', subscribed=True, reverse=False, all_platforms=False)
         # # return pubsub_list
-        # self.vip.pubsub.publish('pubsub', 'some/topic/', message="+++++++++++++++++++++++++ something something")
+        self.vip.pubsub.publish('pubsub', 'some/topic/', message="+++++++++++++++++++++++++ something something")
         # self.vip.pubsub.subscribe('pubsub', 'some/topic/', callable=self._handle_publish)
-        return pubsub_list
+        # return pubsub_list
         # # Hook self.configure up to changes to the configuration file "config".
         # self.vip.config.subscribe(self.configure, actions=["NEW", "UPDATE"], pattern="config")
 
