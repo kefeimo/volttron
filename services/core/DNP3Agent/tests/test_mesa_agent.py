@@ -43,6 +43,8 @@ from mesa_master_test import MesaMasterTest
 from volttron.platform import get_services_core, jsonapi
 from volttron.platform.agent.utils import strip_comments
 
+from volttrontesting.fixtures.volttron_platform_fixtures import volttron_instance
+
 MESA_AGENT_ID = 'mesaagent'
 
 # Get point and function definitions from the files in the test directory.
@@ -103,9 +105,68 @@ def add_definitions_to_config_store(test_agent):
     test_agent.vip.rpc.call('config.store', 'manage_store', MESA_AGENT_ID,
                             'mesa_points.config', points_json, config_type='raw')
     with open(FUNCTION_DEFINITIONS_PATH, 'r') as f:
-        functions_json = yaml.load(f.read())
+        functions_json = yaml.safe_load(f.read())
     test_agent.vip.rpc.call('config.store', 'manage_store', MESA_AGENT_ID,
                             'mesa_functions.config', functions_json, config_type='raw')
+
+
+@pytest.fixture(scope="module")
+def tester_agent(request, volttron_instance):
+    """volttron agent using stages to create"""
+
+    pass
+
+
+# @pytest.fixture(scope="module")
+# class AgentFactory:
+@pytest.fixture(scope="module")
+def agent_init(request, volttron_instance):
+    test_agent = volttron_instance.build_agent(identity="test_agent")
+
+    capabilities = {'edit_config_store': {'identity': 'mesaagent'}}
+    # volttron_instance.add_capabilities(test_agent.core.publickey, capabilities)
+    if volttron_instance.auth_enabled:
+        volttron_instance.add_capabilities(test_agent.core.publickey, capabilities)
+
+    return test_agent
+
+
+@pytest.fixture(scope="module")
+def agent_add_config(agent_init):
+    test_agent = agent_init
+    add_definitions_to_config_store(test_agent)
+
+    return test_agent
+
+
+@pytest.fixture(scope="module")
+def agent_install(volttron_instance, agent_add_config):
+    print('Installing Mesa Agent')
+    os.environ['AGENT_MODULE'] = 'dnp3.mesa.agent'
+    # agent_id = volttron_instance.install_agent(agent_dir=get_services_core('DNP3Agent'),
+    #                                            config_file=MESA_AGENT_CONFIG,
+    #                                            vip_identity=MESA_AGENT_ID,
+    #                                            start=True)
+    agent_id = volttron_instance.install_agent(agent_dir=get_services_core('DNP3Agent'),
+                                               config_file={},
+                                               start=True)
+
+
+class TestStagedAgent:
+    """Test AgentFactory in stages"""
+
+    # @pytest.fixture
+    def test_agent_init(self, agent_init):
+        pass
+        print("+++++++++++++++++++++++++ agent_init", agent_init)
+
+    def test_agent_add_config(self, agent_add_config):
+        pass
+        print("+++++++++++++++++++++++++ agent_add_config", agent_add_config)
+
+    def test_agent_install(self, agent_install):
+        pass
+        print("+++++++++++++++++++++++++ agent_install", agent_install)
 
 
 @pytest.fixture(scope="module")
@@ -114,7 +175,9 @@ def agent(request, volttron_instance):
 
     test_agent = volttron_instance.build_agent(identity="test_agent")
     capabilities = {'edit_config_store': {'identity': 'mesaagent'}}
-    volttron_instance.add_capabilities(test_agent.core.publickey, capabilities)
+    # volttron_instance.add_capabilities(test_agent.core.publickey, capabilities)
+    if volttron_instance.auth_enabled:
+        volttron_instance.add_capabilities(test_agent.core.publickey, capabilities)
 
     add_definitions_to_config_store(test_agent)
 
@@ -143,9 +206,10 @@ def agent(request, volttron_instance):
 
     gevent.sleep(3)        # wait for agents and devices to start
 
+    yield test_agent
     request.addfinalizer(stop)
 
-    return test_agent
+    # return test_agent
 
 
 @pytest.fixture(scope="module")
@@ -169,6 +233,19 @@ def reset(agent):
     global messages
     messages = {}
     agent.vip.rpc.call(MESA_AGENT_ID, 'reset')
+
+
+# @pytest.mark.skip(reason="only for debugging purpose")
+class TestDummyAgentFixture:
+    """
+    Dummy test to check VOLTTRON agent (carry on test VOLTTRON instance) setup
+    """
+
+    def test_agent_dummy(self, agent):
+        print("I am a fixture agent dummy test.")
+
+
+    # def test_
 
 
 class TestMesaAgent:
