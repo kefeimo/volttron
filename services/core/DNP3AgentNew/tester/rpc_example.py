@@ -15,12 +15,19 @@ import datetime
 
 def main():
     a = build_agent()
+
+
+    peer = "test-agent"
+    peer_method = "rpc_demo_config_list_set_get"
+
+    rs = a.vip.rpc.call(peer, peer_method).get(timeout=10)
+    print(datetime.datetime.now(), "rs: ", rs)
     while True:
         sleep(5)
         print("============")
         try:
-            peer = "testeragent-0.5_1"
-            peer_method = "rpc_test"
+            peer = "test-agent"
+            peer_method = "playground"
 
             rs = a.vip.rpc.call(peer, peer_method).get(timeout=10)
             print(datetime.datetime.now(), "rs: ", rs)

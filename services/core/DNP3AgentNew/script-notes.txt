@@ -1,0 +1,5 @@
+python scripts/install-agent.py -s /home/kefei/project-local/volttron/services/core/DNP3AgentNew/ \
+ -c /home/kefei/project-local/volttron/services/core/DNP3AgentNew/config \
+ -t testagent \
+ -i test-agent \
+ -f
