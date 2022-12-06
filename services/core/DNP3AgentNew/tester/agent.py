@@ -9,6 +9,10 @@ import sys
 from volttron.platform.agent import utils
 from volttron.platform.vip.agent import Agent, Core, RPC
 
+from dnp3_python.dnp3station.outstation_new import MyOutStationNew
+from pydnp3 import opendnp3
+
+
 _log = logging.getLogger(__name__)
 utils.setup_logging()
 __version__ = "0.5"
@@ -59,6 +63,10 @@ class Tester(Agent):
         # Hook self.configure up to changes to the configuration file "config".
         self.vip.config.subscribe(self.configure, actions=["NEW", "UPDATE"], pattern="config")
 
+        # for dnp3 features
+        self.outstation_application = MyOutStationNew()
+        self.outstation_application.start()
+
     @RPC.export
     def demo_config_store(self):
         """
@@ -97,19 +105,28 @@ class Tester(Agent):
         return msg_dict
 
     @RPC.export
-    def playground(self):
+    def outstation_apply_update_analog(self, val):
         pass
 
-        msg_dict = dict()
-        config_list = self.vip.config.list()
+        p_val = val
+        self.outstation_application.apply_update(
+            opendnp3.Analog(value=float(p_val),
+                            flags=opendnp3.Flags(24),
+                            time=opendnp3.DNPTime(3094)), 0)
 
-        msg_dict["config_list"] = str(config_list)
-        if config_list:
-            for config_name in config_list:
-                config = self.vip.config.get(config_name)
-                msg_dict[config_name] = str(config)
+        return "return something"
 
-        return msg_dict
+    @RPC.export
+    def playground(self, val):
+        pass
+
+        p_val = val
+        self.outstation_application.apply_update(
+            opendnp3.Analog(value=float(p_val),
+                            flags=opendnp3.Flags(24),
+                            time=opendnp3.DNPTime(3094)), 0)
+
+        return "return something"
 
     def configure(self, config_name, action, contents):
         """

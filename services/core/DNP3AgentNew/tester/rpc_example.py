@@ -17,11 +17,11 @@ def main():
     a = build_agent()
 
 
-    peer = "test-agent"
-    peer_method = "rpc_demo_config_list_set_get"
-
-    rs = a.vip.rpc.call(peer, peer_method).get(timeout=10)
-    print(datetime.datetime.now(), "rs: ", rs)
+    # peer = "test-agent"
+    # peer_method = "rpc_demo_config_list_set_get"
+    #
+    # rs = a.vip.rpc.call(peer, peer_method).get(timeout=10)
+    # print(datetime.datetime.now(), "rs: ", rs)
     while True:
         sleep(5)
         print("============")
@@ -29,7 +29,7 @@ def main():
             peer = "test-agent"
             peer_method = "playground"
 
-            rs = a.vip.rpc.call(peer, peer_method).get(timeout=10)
+            rs = a.vip.rpc.call(peer, peer_method, 1.4532).get(timeout=10)
             print(datetime.datetime.now(), "rs: ", rs)
 
             # rs = a.vip.rpc.call(peer, peer_method, arg1="173", arg2="arg2222",
