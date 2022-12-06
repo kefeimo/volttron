@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*- {{{
 # vim: set fenc=utf-8 ft=python sw=4 ts=4 sts=4 et:
 #
-# Copyright 2018, SLAC / 8minutenergy / Kisensum.
+# Copyright 2018, 8minutenergy / Kisensum.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,9 +15,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-# This material was prepared in part as an account of work sponsored by an agency of
-# the United States Government. Neither the United States Government nor the
-# United States Department of Energy, nor SLAC, nor 8minutenergy, nor Kisensum, nor any of their
+# Neither 8minutenergy nor Kisensum, nor any of their
 # employees, nor any jurisdiction or organization that has cooperated in the
 # development of these materials, makes any warranty, express or
 # implied, or assumes any legal liability or responsibility for the accuracy,
@@ -26,13 +24,10 @@
 # privately owned rights. Reference herein to any specific commercial product,
 # process, or service by trade name, trademark, manufacturer, or otherwise
 # does not necessarily constitute or imply its endorsement, recommendation, or
-# favoring by the United States Government or any agency thereof, or
-# SLAC, 8minutenergy, or Kisensum. The views and opinions of authors expressed
-# herein do not necessarily state or reflect those of the
-# United States Government or any agency thereof.
+# favoring by 8minutenergy or Kisensum.
 # }}}
 
-from os import path, environ
+from os import path
 from setuptools import setup, find_packages
 
 MAIN_MODULE = 'agent'
@@ -50,13 +45,13 @@ if not agent_package:
                                               dir=path.abspath('.')))
 
 # Find the version number from the main module
-agent_module = environ.get('AGENT_MODULE', agent_package + '.' + MAIN_MODULE)
+agent_module = agent_package + '.' + MAIN_MODULE
 _temp = __import__(agent_module, globals(), locals(), ['__version__'], 0)
 __version__ = _temp.__version__
 
 # Setup
 setup(
-    name=agent_module.replace('.', ''),
+    name=agent_package + 'agent',
     version=__version__,
     install_requires=['volttron'],
     packages=packages,

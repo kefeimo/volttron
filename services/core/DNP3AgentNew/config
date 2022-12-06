@@ -1,10 +1,11 @@
 {
-  # VOLTTRON config files are JSON with support for python style comments.
-  "setting1": 2, # Integers
-  "setting2": "some/random/topic2", #Strings
-  "setting3": true, # Booleans: remember that in JSON true and false are not capitalized.
-  "setting4": false,
-  "setting5": 5.1, # Floating point numbers.
-  "setting6": [1,2,3,4], #Lists
-  "setting7": {"setting7a": "a", "setting7b": "b"} # Objects
+    "points": "config://mesa_points.config",
+    "point_topic": "dnp3/point",
+    "outstation_status_topic": "dnp3/outstation_status",
+    "outstation_config": {
+        "database_sizes": 10000,
+        "log_levels": ["NORMAL"]
+    },
+    "local_ip": "0.0.0.0",
+    "port": 20000
 }
