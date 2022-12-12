@@ -26,10 +26,10 @@ def main():
         sleep(5)
         print("============")
         try:
-            peer = "test-agent"
-            peer_method = "playground"
+            peer = "dnp3agent-new"
+            peer_method = "play_ground"
 
-            rs = a.vip.rpc.call(peer, peer_method, 1.4532, 5).get(timeout=10)
+            rs = a.vip.rpc.call(peer, peer_method, 34322.3233).get(timeout=10)
             print(datetime.datetime.now(), "rs: ", rs)
 
             # rs = a.vip.rpc.call(peer, peer_method, arg1="173", arg2="arg2222",

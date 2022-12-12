@@ -37,6 +37,7 @@ DEFAULT_GROUP_BY_DATA_TYPE = {
 }
 
 # variation = 1: 32 bit, variation = 2: 16 bit
+# TODO: change to Group30Var6 for universal analog, i.e., float
 DEFAULT_VARIATION = {
     DATA_TYPE_BINARY_INPUT:  {'evariation': opendnp3.EventBinaryVariation.Group2Var1,
                               'svariation': opendnp3.StaticBinaryVariation.Group1Var2},

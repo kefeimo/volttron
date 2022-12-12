@@ -174,18 +174,22 @@ def agent(request, volttron_instance):
     """Build the test agent for rpc call."""
 
     test_agent = volttron_instance.build_agent(identity="test_agent")
-    capabilities = {'edit_config_store': {'identity': 'mesaagent'}}
+    capabilities = {'edit_config_store': {'identity': 'test_agent'}}
     # volttron_instance.add_capabilities(test_agent.core.publickey, capabilities)
-    if volttron_instance.auth_enabled:
-        volttron_instance.add_capabilities(test_agent.core.publickey, capabilities)
+    # if volttron_instance.auth_enabled:
+    #     volttron_instance.add_capabilities(test_agent.core.publickey, capabilities)
 
-    add_definitions_to_config_store(test_agent)
+    # add_definitions_to_config_store(test_agent)
 
     print('Installing Mesa Agent')
     os.environ['AGENT_MODULE'] = 'dnp3.mesa.agent'
+    # agent_id = volttron_instance.install_agent(agent_dir=get_services_core('DNP3Agent'),
+    #                                            config_file=MESA_AGENT_CONFIG,
+    #                                            vip_identity=MESA_AGENT_ID,
+    #                                            start=True)
     agent_id = volttron_instance.install_agent(agent_dir=get_services_core('DNP3Agent'),
-                                               config_file=MESA_AGENT_CONFIG,
-                                               vip_identity=MESA_AGENT_ID,
+                                               config_file={},
+                                               # vip_identity=MESA_AGENT_ID,
                                                start=True)
 
     # Subscribe to MESA functions

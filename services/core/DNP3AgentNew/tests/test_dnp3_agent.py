@@ -128,7 +128,9 @@ def agent(request, volttron_instance):
 
     test_agent = volttron_instance.build_agent(identity="test_agent")
     capabilities = {'edit_config_store': {'identity': 'dnp3agent'}}
-    volttron_instance.add_capabilities(test_agent.core.publickey, capabilities)
+    # volttron_instance.add_capabilities(test_agent.core.publickey, capabilities)
+    if volttron_instance.auth_enabled:
+        volttron_instance.add_capabilities(test_agent.core.publickey, capabilities)
     add_definitions_to_config_store(test_agent)
 
     print('Installing DNP3Agent')
@@ -279,6 +281,17 @@ class TestDNP3Agent:
     # **********
     # ********** OUTPUT TESTS (send data from Master to Agent to ControlAgent) ************
     # **********
+    def test_run_master(self, run_master):
+        """test fixture run_master"""
+        print("===run_master")
+
+    def test_agent(self, agent):
+        """test fixture agent"""
+        print("===agent")
+
+    def test_agent(self, reset):
+        """test fixture reset"""
+        print("===reset")
 
     def test_get_point_definition(self, run_master, agent, reset):
         """Ask the agent whether it has a point definition for a point name."""

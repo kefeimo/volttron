@@ -477,6 +477,7 @@ class BaseDNP3Agent(Agent):
 
         @param point_map: A dictionary that maps a point's VOLTTRON point name to its DNP3 group and index.
         """
+        # TODO: create example/demo or test cases
         _log.info('Configuring DNP3 points: {}'.format(point_map))
         self.volttron_points = point_map
 
@@ -515,3 +516,7 @@ class BaseDNP3Agent(Agent):
             return response
         except Exception as e:
             raise DNP3Exception(e)
+
+    @RPC.export
+    def play_ground(self, val):
+        return f"+++++ return val {val}"

@@ -13,9 +13,12 @@ from dnp3_python.dnp3station.outstation_new import MyOutStationNew
 from pydnp3 import opendnp3
 
 
-_log = logging.getLogger(__name__)
+_log = logging.getLogger("Dnp3-agent")
 utils.setup_logging()
 __version__ = "0.5"
+
+_log.level=logging.DEBUG
+_log.addHandler(logging.StreamHandler(sys.stdout))  # Note: redirect stdout from dnp3 lib
 
 
 def tester(config_path, **kwargs):
@@ -26,7 +29,7 @@ def tester(config_path, **kwargs):
     :param config_path: Path to a configuration file.
     :type config_path: str
     :returns: Tester
-    :rtype: Tester
+    :rtype: TesterDummy
     """
     try:
         config = utils.load_config(config_path)
@@ -39,16 +42,16 @@ def tester(config_path, **kwargs):
     setting1 = int(config.get('setting1', 1))
     setting2 = config.get('setting2', "some/random/topic")
 
-    return Tester(setting1, setting2, **kwargs)
+    return TesterDummy(setting1, setting2, **kwargs)
 
 
-class Tester(Agent):
+class TesterDummy(Agent):
     """
     Document agent constructor here.
     """
 
     def __init__(self, setting1=1, setting2="some/random/topic", **kwargs):
-        super(Tester, self).__init__(**kwargs)
+        super(TesterDummy, self).__init__(**kwargs)
         _log.debug("vip_identity: " + self.core.identity)
 
         self.setting1 = setting1
@@ -65,7 +68,7 @@ class Tester(Agent):
 
         # for dnp3 features
         self.outstation_application = MyOutStationNew()
-        self.outstation_application.start()
+        # self.outstation_application.start()  # moved to onstart
 
     @RPC.export
     def demo_config_store(self):
@@ -78,7 +81,7 @@ class Tester(Agent):
         'setting7': {'setting7a': 'a', 'setting7b': 'b'}}"}
 
         on command line
-        vctl config store test-agent testagent.config /home/kefei/project-local/volttron/services/core/DNP3AgentNew/config
+        vctl config store test-agent testagent.config /home/kefei/project-local/volttron/services/core/DNP3AgentPlayGround/config
         vctl config get test-agent testagent.config
         """
 
@@ -105,28 +108,75 @@ class Tester(Agent):
         return msg_dict
 
     @RPC.export
-    def outstation_apply_update_analog(self, val):
-        pass
+    def outstation_apply_update_analog_input(self, val, index):
+        """public interface to update analog-input point value
 
-        p_val = val
-        self.outstation_application.apply_update(
-            opendnp3.Analog(value=float(p_val),
-                            flags=opendnp3.Flags(24),
-                            time=opendnp3.DNPTime(3094)), 0)
+        val: float
+        index: int, point index
+        """
+        if not isinstance(val, float):
+            raise f"val of type(val) should be float"
+        self.outstation_application.apply_update(opendnp3.Analog(value=val), index)
+        _log.debug(f"Updated outstation analog-input index: {index}, val: {val}")
 
-        return "return something"
+        return self.outstation_application.db_handler.db
 
     @RPC.export
-    def playground(self, val):
+    def outstation_apply_update_analog_output(self, val, index):
+        """public interface to update analog-output point value
+
+        val: float
+        index: int, point index
+        """
+
+        if not isinstance(val, float):
+            raise f"val of type(val) should be float"
+        self.outstation_application.apply_update(opendnp3.AnalogOutputStatus(value=val), index)
+        _log.debug(f"Updated outstation analog-output index: {index}, val: {val}")
+
+        return self.outstation_application.db_handler.db
+
+    @RPC.export
+    def outstation_apply_update_binary_input(self, val, index):
+        """public interface to update binary-input point value
+
+        val: bool
+        index: int, point index
+        """
+        if not isinstance(val, bool):
+            raise f"val of type(val) should be bool"
+        self.outstation_application.apply_update(opendnp3.Binary(value=val), index)
+        _log.debug(f"Updated outstation binary-input index: {index}, val: {val}")
+
+        return self.outstation_application.db_handler.db
+
+    @RPC.export
+    def outstation_apply_update_binary_output(self, val, index):
+        """public interface to update binary-output point value
+
+        val: bool
+        index: int, point index
+        """
+        if not isinstance(val, bool):
+            raise f"val of type(val) should be bool"
+        self.outstation_application.apply_update(opendnp3.BinaryOutputStatus(value=val), index)
+        _log.debug(f"Updated outstation binary-output index: {index}, val: {val}")
+
+        return self.outstation_application.db_handler.db
+
+    @RPC.export
+    def outstation_display_db(self):
+        return self.outstation_application.db_handler.db
+
+    @RPC.export
+    def playground(self, val, index):
         pass
 
-        p_val = val
-        self.outstation_application.apply_update(
-            opendnp3.Analog(value=float(p_val),
-                            flags=opendnp3.Flags(24),
-                            time=opendnp3.DNPTime(3094)), 0)
 
-        return "return something"
+
+        _log.debug("====================")
+
+        return self.outstation_display_db()
 
     def configure(self, config_name, action, contents):
         """
@@ -189,6 +239,9 @@ class Tester(Agent):
         # self.vip.rpc.call("some_agent", "some_method", arg1, arg2)
         pass
         self._create_subscriptions(self.setting2)
+
+        # for dnp3 outstation
+        self.outstation_application.start()
 
     @Core.receiver("onstop")
     def onstop(self, sender, **kwargs):
