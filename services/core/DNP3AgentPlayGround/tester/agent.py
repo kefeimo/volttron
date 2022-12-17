@@ -21,19 +21,29 @@ _log.level=logging.DEBUG
 _log.addHandler(logging.StreamHandler(sys.stdout))  # Note: redirect stdout from dnp3 lib
 
 
-def tester(config_path, **kwargs):
+def agent_main(config_path, **kwargs):
     """
     Parses the Agent configuration and returns an instance of
     the agent created using that configuration.
 
+    Note: config_path is by convention under .volttron home path, called config, e.g.
+    /home/kefei/.volttron/agents/6745e0ef-b500-495a-a6e8-120ec0ead4fd/testeragent-0.5/testeragent-0.5.dist-info/config
+
     :param config_path: Path to a configuration file.
     :type config_path: str
     :returns: Tester
-    :rtype: TesterDummy
+    :rtype: Dnp3Agent
     """
+    # _log.info(f"======config_path {config_path}")
+    # Note: config_path is by convention under .volttron home path, called config, e.g.
+    # /home/kefei/.volttron/agents/6745e0ef-b500-495a-a6e8-120ec0ead4fd/testeragent-0.5/testeragent-0.5.dist-info/config
+    # Note: the config file is attached when running `python scripts/install-agent.py -c TestAgent/config`
+    # NOte: the config file attached in this way will not appear in the config store.
+    # (Need to explicitly using `vctl config store`)
     try:
-        config = utils.load_config(config_path)
-    except Exception:
+        config: dict = utils.load_config(config_path)
+    except Exception as e:
+        _log.info(e)
         config = {}
 
     if not config:
@@ -42,17 +52,18 @@ def tester(config_path, **kwargs):
     setting1 = int(config.get('setting1', 1))
     setting2 = config.get('setting2', "some/random/topic")
 
-    return TesterDummy(setting1, setting2, **kwargs)
+    return Dnp3Agent(setting1, setting2, **kwargs)
 
 
-class TesterDummy(Agent):
+class Dnp3Agent(Agent):
     """
-    Document agent constructor here.
+    Dnp3 agent mainly to represent a dnp3 outstation
     """
 
     def __init__(self, setting1=1, setting2="some/random/topic", **kwargs):
-        super(TesterDummy, self).__init__(**kwargs)
-        _log.debug("vip_identity: " + self.core.identity)
+        super(Dnp3Agent, self).__init__(**kwargs)
+        _log.debug("vip_identity: " + self.core.identity)  # Note: consistent with IDENTITY in `vctl status`
+
 
         self.setting1 = setting1
         self.setting2 = setting2
@@ -69,6 +80,21 @@ class TesterDummy(Agent):
         # for dnp3 features
         self.outstation_application = MyOutStationNew()
         # self.outstation_application.start()  # moved to onstart
+
+    @RPC.export
+    def outstation_get_db(self):
+        """expose db"""
+        return self.outstation_application.db_handler.db
+
+    @RPC.export
+    def outstation_get_config(self):
+        """expose get_config"""
+        return self.outstation_application.get_config()
+
+    @RPC.export
+    def outstation_get_is_connected(self):
+        """expose is_connected, note: status, property"""
+        return self.outstation_application.is_connected
 
     @RPC.export
     def demo_config_store(self):
@@ -341,7 +367,7 @@ class TesterDummy(Agent):
 
 def main():
     """Main method called to start the agent."""
-    utils.vip_main(tester,
+    utils.vip_main(agent_main,
                    version=__version__)
 
 
