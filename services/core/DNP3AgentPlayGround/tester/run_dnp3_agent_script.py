@@ -31,14 +31,15 @@ def setup_args(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
     # Adding optional argument
     # parser.add_argument("-mip", "--master-ip", action="store", default="0.0.0.0", type=str,
     #                     metavar="<IP>")
-    parser.add_argument("-oip", "--outstation-ip", action="store", default="0.0.0.0", type=str,
-                        metavar="<IP>")
-    parser.add_argument("-p", "--port", action="store", default=20000, type=int,
-                        metavar="<PORT>")
-    parser.add_argument("-mid", "--master-id", action="store", default=2, type=int,
-                        metavar="<ID>")
-    parser.add_argument("-oid", "--outstation-id", action="store", default=1, type=int,
-                        metavar="<ID>")
+    # note: volttron agent require post-configuration
+    # parser.add_argument("-oip", "--outstation-ip", action="store", default="0.0.0.0", type=str,
+    #                     metavar="<IP>")
+    # parser.add_argument("-p", "--port", action="store", default=20000, type=int,
+    #                     metavar="<PORT>")
+    # parser.add_argument("-mid", "--master-id", action="store", default=2, type=int,
+    #                     metavar="<ID>")
+    # parser.add_argument("-oid", "--outstation-id", action="store", default=1, type=int,
+    #                     metavar="<ID>")
     parser.add_argument("-dan", "--dnp3-agent-name", action="store", default="dnp3-agent", type=str,
                         metavar="<peer-name>", help="config dnp3-agent-name (for rpc call), default 'dnp3-agent'.")
 
@@ -81,6 +82,17 @@ def main(parser=None, *args, **kwargs):
     peer = args.dnp3_agent_name  # note: default "dnp3-agent" or "test-agent"
     # peer_method = "outstation_apply_update_analog_input"
 
+    def get_db_helper():
+        _peer_method = "outstation_get_db"
+        _db_print = a.vip.rpc.call(peer, _peer_method).get(timeout=10)
+        return _db_print
+
+    def get_config_helper():
+        _peer_method = "outstation_get_config"
+        _config_print = a.vip.rpc.call(peer, _peer_method).get(timeout=10)
+        _config_print.update({"peer": peer})
+        return _config_print
+
     # outstation_application = MyOutStationNew(
     #     # masterstation_ip_str=args.master_ip,
     #     outstation_ip_str=args.outstation_ip,
@@ -108,6 +120,8 @@ def main(parser=None, *args, **kwargs):
         count += 1
         # print(f"=========== Count {count}")
 
+
+
         # TODO: figure out how to list existing agents, e.g., the following code block cannot be captured
         # try:
         #     x = a.vip.rpc.call(agent_not_exist, "outstation_get_is_connectedsddsdf", ).get(timeout=10)
@@ -121,14 +135,12 @@ def main(parser=None, *args, **kwargs):
         else:
             print("Communication error.")
             # print("Communication Config", outstation_application.get_config())
+            print(get_config_helper())
             print("Start retry...")
             sleep(2)
             continue
 
-        def get_db_helper():
-            _peer_method = "outstation_get_db"
-            _db_print = a.vip.rpc.call(peer, _peer_method).get(timeout=10)
-            return _db_print
+
 
         option = input_prompt()  # Note: one of ["ai", "ao", "bi", "bo",  "dd", "dc"]
         while True:
@@ -228,9 +240,9 @@ def main(parser=None, *args, **kwargs):
             elif option == "dc":
                 print("You chose < dc> - display configuration")
                 # print(outstation_application.get_config())
-                peer_method = "outstation_get_config"
-                config_print = a.vip.rpc.call(peer, peer_method).get(timeout=10)
-                print(config_print)
+                # peer_method = "outstation_get_config"
+                # config_print = a.vip.rpc.call(peer, peer_method).get(timeout=10)
+                print(get_config_helper())
                 sleep(3)
                 break
             else:
@@ -239,7 +251,7 @@ def main(parser=None, *args, **kwargs):
                 break
 
     _log.debug('Exiting.')
-    outstation_application.shutdown()
+    # outstation_application.shutdown()
     # outstation_application.shutdown()
 
 

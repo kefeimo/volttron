@@ -52,7 +52,7 @@ def agent_main(config_path, **kwargs):
     setting1 = int(config.get('setting1', 1))
     setting2 = config.get('setting2', "some/random/topic")
 
-    return Dnp3Agent(setting1, setting2, **kwargs)
+    return Dnp3Agent(config, setting2, **kwargs)
 
 
 class Dnp3Agent(Agent):
@@ -60,26 +60,73 @@ class Dnp3Agent(Agent):
     Dnp3 agent mainly to represent a dnp3 outstation
     """
 
-    def __init__(self, setting1=1, setting2="some/random/topic", **kwargs):
+    def __init__(self, setting1={}, setting2="some/random/topic", **kwargs):
+        # TODO: clean-up the bizarre signature. Note: may need to reinstall the agent for testing.
         super(Dnp3Agent, self).__init__(**kwargs)
         _log.debug("vip_identity: " + self.core.identity)  # Note: consistent with IDENTITY in `vctl status`
 
 
-        self.setting1 = setting1
-        self.setting2 = setting2
+        # self.setting1 = setting1
+        # self.setting2 = setting2
+        config_when_installed = setting1
 
-        self.default_config = {"setting1": setting1,
-                               "setting2": setting2}
+        self.default_config = {'outstation_ip_str': '0.0.0.0', 'port': 21000,
+                               'masterstation_id_int': 2, 'outstation_id_int': 1}
+        # agent configuration using volttron config framework
+        # get_volttron_cofig, set_volltron_config
+        self._volttron_config: dict
+
+        # for dnp3 features
+        try:
+            self.outstation_application = MyOutStationNew(**config_when_installed)
+            _log.info(f"init dnp3 outstation with {config_when_installed}")
+            self._volttron_config = config_when_installed
+        except Exception as e:
+            _log.error(e)
+            self.outstation_application = MyOutStationNew(**self.default_config)
+            _log.info(f"init dnp3 outstation with {self.default_config}")
+            self._volttron_config = self.default_config
+        # self.outstation_application.start()  # moved to onstart
 
         # Set a default configuration to ensure that self.configure is called immediately to setup
         # the agent.
-        self.vip.config.set_default("config", self.default_config)
+        self.vip.config.set_default(config_name="default-config", contents=self.default_config)
+        self.vip.config.set_default(config_name="_volttron_config", contents=self._volttron_config)
         # Hook self.configure up to changes to the configuration file "config".
         self.vip.config.subscribe(self.configure, actions=["NEW", "UPDATE"], pattern="config")
 
-        # for dnp3 features
-        self.outstation_application = MyOutStationNew()
-        # self.outstation_application.start()  # moved to onstart
+    @RPC.export
+    def get_volttron_config(self):
+        return self._volttron_config
+
+    @RPC.export
+    def set_volttron_config(self, **kwargs):
+        """set self._volttron_config using **kwargs.
+        EXAMPLE
+        self.default_config = {'outstation_ip_str': '0.0.0.0', 'port': 21000,
+                               'masterstation_id_int': 2, 'outstation_id_int': 1}
+        set_volttron_config(port=30000, unused_key="unused")
+        # outcome
+        self.default_config = {'outstation_ip_str': '0.0.0.0', 'port': 30000,
+                               'masterstation_id_int': 2, 'outstation_id_int': 1,
+                               'unused_key': 'unused'}
+                               """
+        self._volttron_config.update(kwargs)
+        _log.info(f"Updated self._volttron_config to {self._volttron_config}")
+        return {"_volttron_config": self.get_volttron_config()}
+
+    @RPC.export
+    def outstation_reset(self):
+        """restart outstation with current config.
+        For post-configuration to take effect.
+        Note: will start a new outstation instance and the old database data will lose"""
+        try:
+            outstation_app_new = MyOutStationNew(**self._volttron_config)
+            self.outstation_application.shutdown()
+            self.outstation_application = outstation_app_new
+            self.outstation_application.start()
+        except Exception as e:
+            _log.error(e)
 
     @RPC.export
     def outstation_get_db(self):
@@ -206,10 +253,7 @@ class Dnp3Agent(Agent):
 
     def configure(self, config_name, action, contents):
         """
-        Called after the Agent has connected to the message bus. If a configuration exists at startup
-        this will be called before onstart.
-
-        Is called every time the configuration in the store changes.
+        # TODO: clean-up this bizarre method
         """
         config = self.default_config.copy()
         config.update(contents)
@@ -258,16 +302,18 @@ class Dnp3Agent(Agent):
 
         Usually not needed if using the configuration store.
         """
-        # Example publish to pubsub
-        self.vip.pubsub.publish('pubsub', "some/random/topic", message="HI!")
-
-        # Example RPC call
-        # self.vip.rpc.call("some_agent", "some_method", arg1, arg2)
-        pass
-        self._create_subscriptions(self.setting2)
 
         # for dnp3 outstation
         self.outstation_application.start()
+
+        # Example publish to pubsub
+        # self.vip.pubsub.publish('pubsub', "some/random/topic", message="HI!")
+        #
+        # # Example RPC call
+        # # self.vip.rpc.call("some_agent", "some_method", arg1, arg2)
+        # pass
+        # self._create_subscriptions(self.setting2)
+
 
     @Core.receiver("onstop")
     def onstop(self, sender, **kwargs):
@@ -276,6 +322,7 @@ class Dnp3Agent(Agent):
         the message bus.
         """
         pass
+        self.outstation_application.shutdown()
 
     @RPC.export
     def rpc_method(self, arg1, arg2, kwarg1=None, kwarg2=None):

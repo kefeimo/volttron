@@ -16,16 +16,31 @@ import datetime
 def main():
     a = build_agent()
 
-    peer = "test-agent"
-    peer_method = "outstation_apply_update_analog_input"
+    # peer = "test-agent"
+    # peer_method = "outstation_get_config"
+    #
+    # rs = a.vip.rpc.call(peer, peer_method, ).get(timeout=10)
+    # print(datetime.datetime.now(), "rs: ", rs)
 
-    rs = a.vip.rpc.call(peer, peer_method, 0.4532, 0).get(timeout=10)
-    print(datetime.datetime.now(), "rs: ", rs)
-    rs = a.vip.rpc.call(peer, peer_method, 1.412, 1).get(timeout=10)
+    peer = "dnp3-agent"
+
+    peer_method = "get_volttron_config"
+    rs = a.vip.rpc.call(peer, peer_method).get(timeout=10)
     print(datetime.datetime.now(), "rs: ", rs)
 
-    peer = "test-agent"
-    peer_method = "rpc_demo_config_list_set_get"
+    # peer_method = "set_volttron_config"
+    # rs = a.vip.rpc.call(peer, peer_method, port=100, unused_key="unused").get(timeout=10)
+    # print(datetime.datetime.now(), "rs: ", rs)
+    #
+    # peer_method = "demo_config_store"
+    # rs = a.vip.rpc.call(peer, peer_method).get(timeout=10)
+    # print(datetime.datetime.now(), "rs: ", rs)
+
+    peer_method = "outstation_get_db"
+    rs = a.vip.rpc.call(peer, peer_method).get(timeout=10)
+    print(datetime.datetime.now(), "rs: ", rs)
+
+    peer_method = "outstation_get_is_connected"
     rs = a.vip.rpc.call(peer, peer_method).get(timeout=10)
     print(datetime.datetime.now(), "rs: ", rs)
 
