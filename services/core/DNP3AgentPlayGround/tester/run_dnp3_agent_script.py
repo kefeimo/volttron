@@ -53,8 +53,10 @@ def print_menu():
 <ao> - set analog-output point value
 <bi> - set binary-input point value
 <bo> - set binary-output point value
+
 <dd> - display database
-<dc> - display configuration
+<di> - display (outstation) info
+<cr> - config then restart outstation
 =================================================================\
 """
     print(welcome_str)
@@ -229,7 +231,7 @@ def main(parser=None, *args, **kwargs):
                     print(f"your input string '{input_str}'")
                     print(e)
             elif option == "dd":
-                print("You chose < dd > - display database")
+                print("You chose <dd> - display database")
                 # db_print = outstation_application.db_handler.db
                 # peer_method = "outstation_get_db"
                 # db_print = a.vip.rpc.call(peer, peer_method).get(timeout=10)
@@ -237,13 +239,30 @@ def main(parser=None, *args, **kwargs):
                 print(get_db_helper())
                 sleep(2)
                 break
-            elif option == "dc":
-                print("You chose < dc> - display configuration")
+            elif option == "di":
+                print("You chose <di> - display (outstation) info")
                 # print(outstation_application.get_config())
                 # peer_method = "outstation_get_config"
                 # config_print = a.vip.rpc.call(peer, peer_method).get(timeout=10)
                 print(get_config_helper())
                 sleep(3)
+                break
+            elif option == "cr":
+                print("You chose <cr> - config then restart outstation")
+                print(f"current self.volttron_config is {get_config_helper()}")
+                print("Type in <port-value-of-int>, then hit ENTER. (Note: In this script, only support port configuration.)")
+                input_str = input_prompt()
+                try:
+                    # set_volttron_config
+                    port_val = int(input_str)
+                    method = agent.Dnp3Agent.outstation_reset
+                    peer_method = method.__name__
+                    response = a.vip.rpc.call(peer, peer_method, port=port_val).get(timeout=10)
+                    print("SUCCESS.", get_config_helper())
+                    sleep(2)
+                except Exception as e:
+                    print(f"your input string '{input_str}'")
+                    print(e)
                 break
             else:
                 print(f"ERROR- your input `{option}` is not one of the following.")

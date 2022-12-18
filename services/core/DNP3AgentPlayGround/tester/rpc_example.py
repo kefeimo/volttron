@@ -36,11 +36,15 @@ def main():
     # rs = a.vip.rpc.call(peer, peer_method).get(timeout=10)
     # print(datetime.datetime.now(), "rs: ", rs)
 
-    peer_method = "outstation_get_db"
-    rs = a.vip.rpc.call(peer, peer_method).get(timeout=10)
+    peer_method = "set_volttron_config"
+    rs = a.vip.rpc.call(peer, peer_method, port=31000).get(timeout=10)
     print(datetime.datetime.now(), "rs: ", rs)
 
-    peer_method = "outstation_get_is_connected"
+    # peer_method = "outstation_get_is_connected"
+    # rs = a.vip.rpc.call(peer, peer_method).get(timeout=10)
+    # print(datetime.datetime.now(), "rs: ", rs)
+
+    peer_method = "outstation_reset"
     rs = a.vip.rpc.call(peer, peer_method).get(timeout=10)
     print(datetime.datetime.now(), "rs: ", rs)
 
