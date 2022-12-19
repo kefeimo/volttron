@@ -4,7 +4,7 @@ MAIN_MODULE = 'agent'
 
 # Find the agent package that contains the main module
 packages = find_packages('.')
-agent_package = 'tester'
+agent_package = 'dnp3agent'
 
 # Find the version number from the main module
 agent_module = agent_package + '.' + MAIN_MODULE
@@ -16,9 +16,9 @@ setup(
     name=agent_package + 'agent',
     version=__version__,
     author="VOLTTRON team",
-    author_email="kefei@pnl.gov",
+    author_email="volttron@pnl.gov",
     url="http:something",
-    description="Agent development tutorial",
+    description="Dnp3 agent as an outstation",
     install_requires=['volttron'],
     packages=packages,
     entry_points={

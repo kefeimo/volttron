@@ -329,4 +329,4 @@ def test_installagent(auto_registered_local):
 # def test_login_rejected_for_foo(vc_instance):
 #     vc_jsonrpc = vc_instance[2]
 #     with pytest.raises(AssertionError):
-#         tester = APITester(vc_jsonrpc, "foo", "")
+#         dnp3agent = APITester(vc_jsonrpc, "foo", "")

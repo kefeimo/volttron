@@ -7,7 +7,7 @@ from dnp3_python.dnp3station.outstation_new import MyOutStationNew
 
 from time import sleep
 from volttron.platform.vip.agent.utils import build_agent
-from services.core.DNP3AgentPlayGround.tester import agent  # agent
+from services.core.Dnp3AgentNew.dnp3agent import agent  # agent
 
 stdout_stream = logging.StreamHandler(sys.stdout)
 stdout_stream.setFormatter(logging.Formatter('%(asctime)s\t%(name)s\t%(levelname)s\t%(message)s'))

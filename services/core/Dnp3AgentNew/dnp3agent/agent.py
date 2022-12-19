@@ -15,7 +15,7 @@ from pydnp3 import opendnp3
 
 _log = logging.getLogger("Dnp3-agent")
 utils.setup_logging()
-__version__ = "0.5"
+__version__ = "0.2.0"
 
 _log.level=logging.DEBUG
 _log.addHandler(logging.StreamHandler(sys.stdout))  # Note: redirect stdout from dnp3 lib
@@ -154,7 +154,7 @@ class Dnp3Agent(Agent):
     #     'setting7': {'setting7a': 'a', 'setting7b': 'b'}}"}
     #
     #     on command line
-    #     vctl config store test-agent testagent.config /home/kefei/project-local/volttron/services/core/DNP3AgentPlayGround/config
+    #     vctl config store test-agent testagent.config /home/kefei/project-local/volttron/services/core/Dnp3AgentNew/config
     #     vctl config get test-agent testagent.config
     #     """
     #
