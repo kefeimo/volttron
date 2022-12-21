@@ -1,5 +1,5 @@
-python scripts/install-agent.py -s /home/kefei/project-local/volttron/services/core/DNP3OutstationAgent/ \
- -c /home/kefei/project-local/volttron/services/core/DNP3OutstationAgent/config \
+python scripts/install-agent.py -s services/core/DNP3OutstationAgent/ \
+ -c services/core/DNP3OutstationAgent/config \
  -t dnp3agent \
  -i dnp3-agent \
  -f
