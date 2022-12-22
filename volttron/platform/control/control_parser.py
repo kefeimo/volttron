@@ -47,6 +47,7 @@ import logging.handlers
 import logging.config
 import os
 import sys
+import argcomplete
 
 from datetime import timedelta, datetime
 
@@ -863,6 +864,7 @@ def main():
     conf = os.path.join(volttron_home, "config")
     if os.path.exists(conf) and "SKIP_VOLTTRON_CONFIG" not in os.environ:
         args = ["--config", conf] + args
+    argcomplete.autocomplete(parser)
     opts = parser.parse_args(args)
 
     if opts.log:
