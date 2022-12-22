@@ -38,6 +38,7 @@
 
 # Monkeypatch for gevent
 from volttron.utils import monkey_patch
+
 monkey_patch()
 
 import argparse
@@ -47,6 +48,7 @@ import logging.handlers
 import logging.config
 import os
 import sys
+import argcomplete
 
 from datetime import timedelta, datetime
 
@@ -66,13 +68,13 @@ from volttron.platform.control.control_connection import ControlConnection
 from volttron.platform.control.control_rmq import add_rabbitmq_parser
 from volttron.platform.control.control_rpc import add_rpc_agent_parser
 from volttron.platform.control.control_utils import (
-    _list_agents, 
-    _show_filtered_agents, 
-    _show_filtered_agents_status, 
-    filter_agent, 
-    filter_agents, 
+    _list_agents,
+    _show_filtered_agents,
+    _show_filtered_agents_status,
+    filter_agent,
+    filter_agents,
     get_filtered_agents
-    )
+)
 from volttron.platform.agent import utils
 from volttron.platform.agent.known_identities import PLATFORM_HEALTH
 from volttron.platform.jsonrpc import RemoteError
@@ -82,6 +84,7 @@ from volttron.platform.vip.agent.errors import VIPError, Unreachable
 from volttron.platform.agent.utils import is_secure_mode, wait_for_volttron_shutdown
 from volttron.platform.control.install_agents import add_install_agent_parser, InstallRuntimeError
 from volttron.platform import is_rabbitmq_available
+
 if is_rabbitmq_available():
     from volttron.utils.rmq_setup import check_rabbit_status
     from volttron.utils.rmq_config_params import RMQConfig
@@ -109,6 +112,7 @@ message_bus = utils.get_messagebus()
 rmq_mgmt = None
 
 CHUNK_SIZE = 4096
+
 
 def log_to_file(file, level=logging.WARNING,
                 handler_class=logging.StreamHandler):
@@ -208,9 +212,9 @@ def update_health_cache(opts):
     # Make sure we update if we don't have any health dicts, or if the cache
     # has timed out.
     if (
-        health_cache_timeout_date is not None
-        and t_now < health_cache_timeout_date
-        and health_cache
+            health_cache_timeout_date is not None
+            and t_now < health_cache_timeout_date
+            and health_cache
     ):
         do_update = False
 
@@ -225,6 +229,7 @@ def update_health_cache(opts):
             health_cache_timeout_date = datetime.now() + timedelta(
                 seconds=health_cache_timeout
             )
+
 
 # TODO: Remove AIP
 def status_agents(opts):
@@ -282,7 +287,8 @@ def status_agents(opts):
 
     _show_filtered_agents_status(opts, get_status, get_health, agents)
 
-#TODO: Remove AIP
+
+# TODO: Remove AIP
 def agent_health(opts):
     agents = {agent.uuid: agent for agent in _list_agents(opts.aip)}.values()
     agents = get_filtered_agents(opts, agents)
@@ -308,6 +314,7 @@ def agent_health(opts):
 
 def clear_status(opts):
     opts.connection.call("clear_status", opts.clear_all)
+
 
 # TODO: Remove AIP
 def enable_agent(opts):
@@ -363,21 +370,22 @@ def act_on_agent(action, opts):
 
     if not opts.by_all_tagged and not opts.pattern:
         raise ValueError("Missing search pattern.")
-    
+
     if opts.by_all_tagged and not agents:
         return
 
     # when all-tagged option is used, prefilter agents that are tagged and set search pattern to *
     if opts.by_all_tagged and not opts.pattern:
         agents, pattern_to_use = [a for a in agents if a.tag is not None], '*'
-    
+
     # filter agents and update regex pattern
     for pattern, filtered_agents in filter_agents(agents, pattern_to_use, opts):
         if not filtered_agents:
             _stderr.write(f"Agents NOT found using 'vctl {opts.command}' on pattern: {pattern}\n")
         for agent in filtered_agents:
             pid, status = call("agent_status", agent.uuid)
-            _call_action_on_agent(agent, pid, status, call,  action)
+            _call_action_on_agent(agent, pid, status, call, action)
+
 
 def _call_action_on_agent(agent, pid, status, call, action):
     if action == "start_agent":
@@ -472,9 +480,6 @@ def send_agent(opts):
         return uuid
 
 
-
-
-
 def do_stats(opts):
     call = opts.connection.call
     if opts.op == "status":
@@ -490,7 +495,6 @@ def do_stats(opts):
     else:
         call("stats." + opts.op)
         _stdout.write("%sabled\n" % ("en" if call("stats.enabled") else "dis"))
-
 
 
 def priority(value):
@@ -654,7 +658,7 @@ def main():
 
     # ====================================================
     # install agent parser
-    # ====================================================   
+    # ====================================================
     add_install_agent_parser(add_parser, HAVE_RESTRICTED)
 
     tag = add_parser("tag", parents=[filterable],
@@ -778,7 +782,6 @@ def main():
             help=argparse.SUPPRESS,
         )
     run.set_defaults(func=run_agent)
-    
 
     # ====================================================
     # rpc commands
@@ -863,6 +866,7 @@ def main():
     conf = os.path.join(volttron_home, "config")
     if os.path.exists(conf) and "SKIP_VOLTTRON_CONFIG" not in os.environ:
         args = ["--config", conf] + args
+    argcomplete.autocomplete(parser)  # auto-complete
     opts = parser.parse_args(args)
 
     if opts.log:
