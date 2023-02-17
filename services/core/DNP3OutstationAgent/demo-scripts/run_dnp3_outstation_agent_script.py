@@ -7,7 +7,7 @@ from dnp3_python.dnp3station.outstation_new import MyOutStationNew
 
 from time import sleep
 from volttron.platform.vip.agent.utils import build_agent
-from services.core.Dnp3AgentNew.dnp3agent import agent  # agent
+from services.core.DNP3OutstationAgent.dnp3_outstation_agent import agent  # agent
 
 stdout_stream = logging.StreamHandler(sys.stdout)
 stdout_stream.setFormatter(logging.Formatter('%(asctime)s\t%(name)s\t%(levelname)s\t%(message)s'))
@@ -21,7 +21,7 @@ _log.setLevel(logging.DEBUG)
 def input_prompt(display_str=None) -> str:
     if display_str is None:
         display_str = """
-======== Your Input Here: ==(DNP3 Agent)======
+======== Your Input Here: ==(DNP3 OutStation Agent)======
 """
     return input(display_str)
 
@@ -40,8 +40,8 @@ def setup_args(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
     #                     metavar="<ID>")
     # parser.add_argument("-oid", "--outstation-id", action="store", default=1, type=int,
     #                     metavar="<ID>")
-    parser.add_argument("-dan", "--dnp3-agent-name", action="store", default="dnp3-agent", type=str,
-                        metavar="<peer-name>", help="config dnp3-agent-name (for rpc call), default 'dnp3-agent'.")
+    parser.add_argument("-aid", "--agent-identity", action="store", default="dnp3-outstation-agent", type=str,
+                        metavar="<peer-name>", help="specify agent identity (parsed as peer-name for rpc call), default 'dnp3-outstation-agent'.")
 
     return parser
 
@@ -67,7 +67,7 @@ def main(parser=None, *args, **kwargs):
         # Initialize parser
         parser = argparse.ArgumentParser(
             prog="dnp3-outstation",
-            description="Run a dnp3 outstation",
+            description="Run a dnp3 outstation agent. Specify agent identity, by default `dnp3-outstation-agent`",
             # epilog="Thanks for using %(prog)s! :)",
         )
         parser = setup_args(parser)
@@ -81,7 +81,7 @@ def main(parser=None, *args, **kwargs):
 
     # create volttron vip agent to evoke dnp3-agent rpc calls
     a = build_agent()
-    peer = args.dnp3_agent_name  # note: default "dnp3-agent" or "test-agent"
+    peer = args.agent_identity  # note: default "dnp3-outstation-agent" or "test-agent"
     # peer_method = "outstation_apply_update_analog_input"
 
     def get_db_helper():

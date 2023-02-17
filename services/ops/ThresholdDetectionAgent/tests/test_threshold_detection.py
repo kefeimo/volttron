@@ -120,7 +120,7 @@ class AlertWatcher(Agent):
 def threshold_tester_agent(volttron_instance):
     """
     Fixture used for setting up ThresholdDetectionAgent and
-    dnp3agent agents
+    dnp3_outstation_agent agents
     """
 
     print("ADDRESS IS: ", volttron_instance.vip_address)

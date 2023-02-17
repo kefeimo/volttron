@@ -55,7 +55,7 @@ HOST = "127.0.0.1"
 LOCAL = "0.0.0.0"
 PORT = 20000
 
-DNP3_AGENT_ID = 'dnp3agent'
+DNP3_AGENT_ID = 'dnp3_outstation_agent'
 POINT_TOPIC = "dnp3/point"
 TEST_GET_POINT_NAME = 'DCTE.WinTms.AO11'
 TEST_SET_POINT_NAME = 'DCTE.WinTms.AI55'
@@ -127,7 +127,7 @@ def agent(request, volttron_instance):
     """Build the test agent for rpc call."""
 
     test_agent = volttron_instance.build_agent(identity="test_agent")
-    capabilities = {'edit_config_store': {'identity': 'dnp3agent'}}
+    capabilities = {'edit_config_store': {'identity': 'dnp3_outstation_agent'}}
     volttron_instance.add_capabilities(test_agent.core.publickey, capabilities)
     add_definitions_to_config_store(test_agent)
 

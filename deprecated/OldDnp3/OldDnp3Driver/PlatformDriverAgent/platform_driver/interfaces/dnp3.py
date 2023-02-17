@@ -45,7 +45,7 @@ type_mapping = {"string": str,
                 "bool": bool,
                 "boolean": bool}
 
-DEFAULT_DNP3_AGENT_ID = 'dnp3agent'
+DEFAULT_DNP3_AGENT_ID = 'dnp3_outstation_agent'
 DEFAULT_CACHE_EXPIRATION_SECS = 5
 
 

@@ -19,11 +19,11 @@ from volttron.platform.agent import utils
 utils.setup_logging()
 logger = logging.getLogger(__name__)
 
-DNP3_AGENT_ID = 'dnp3agent'
+DNP3_AGENT_ID = 'dnp3_outstation_agent'
 
 DRIVER_CONFIG_STRING = """{
     "driver_config": {
-        "dnp3_agent_id": "dnp3agent"
+        "dnp3_agent_id": "dnp3_outstation_agent"
     },
     "campus": "campus",
     "building": "building",

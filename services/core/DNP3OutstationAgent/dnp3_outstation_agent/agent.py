@@ -69,6 +69,8 @@ class Dnp3Agent(Agent):
         # self.setting1 = setting1
         # self.setting2 = setting2
         config_when_installed = setting1
+        # TODO: new-feature: load_config from config store
+        # config_at_configstore =
 
         self.default_config = {'outstation_ip_str': '0.0.0.0', 'port': 21000,
                                'masterstation_id_int': 2, 'outstation_id_int': 1}
@@ -154,7 +156,7 @@ class Dnp3Agent(Agent):
     #     'setting7': {'setting7a': 'a', 'setting7b': 'b'}}"}
     #
     #     on command line
-    #     vctl config store test-agent testagent.config /home/kefei/project-local/volttron/services/core/Dnp3AgentNew/config
+    #     vctl config store test-agent testagent.config /home/kefei/project-local/volttron/services/core/DNP3OutstationAgent/config
     #     vctl config get test-agent testagent.config
     #     """
     #

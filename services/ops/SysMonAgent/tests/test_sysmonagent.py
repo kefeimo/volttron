@@ -67,7 +67,7 @@ assert isinstance(default_config_json, dict)
 @pytest.fixture()
 def sysmon_tester_agent(request, volttron_instance, tmpdir):
     """
-    Fixture used for setting up SysMonAgent and dnp3agent agent
+    Fixture used for setting up SysMonAgent and dnp3_outstation_agent agent
     """
     config = tmpdir.mkdir('config').join('config')
     config.write(jsonapi.dumps(_test_config))
