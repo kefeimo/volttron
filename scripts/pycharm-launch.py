@@ -110,51 +110,75 @@ for c in agent_identity:
         write_required_statement()
         sys.exit(10)
 
+def _create_new_kystore_json_file(new_dir):    
+    try:
+        output = subprocess.check_output(['vctl', 'auth', 'keypair'],
+                                            env=os.environ.copy(), universal_newlines=True, stderr=subprocess.STDOUT)
+    except subprocess.CalledProcessError as e:
+        sys.stderr.write("Couldn't get key pair for identity: {}\n".format(
+            agent_identity
+        ))
+        sys.stderr.write("Call was:\n\tvctl auth keypair\n")
+        sys.stderr.write("Output of command: {}".format(e.output))
+        sys.stderr.write("Your environment might not be setup correctly!")
+        # os.rmdir(new_dir)
+        write_required_statement()
+        sys.exit(20)
+
+    keystore_file = os.path.join(new_dir, "keystore.json")
+    
+    with open(keystore_file, 'w') as fout:
+        fout.write(output)
+    json_obj = jsonapi.loads(output)    
+    pubkey = json_obj['public']
+    _add_credential(pubkey, agent_identity)
+    
+def _add_credential(pubkey, agent_identity):   
+    try:
+        # params = ['vctl', 'auth', 'add',
+        #           '--credentials', "{}".format(pubkey), '--user_id', agent_identity,
+        #           '--capabilities', "edit_config_store",
+        #           '--comments', "Added from pycharm-launch.py script."
+        #           ]
+        params = ['vctl', 'auth', 'add',
+                    '--credentials', "{}".format(pubkey), '--identity', agent_identity
+                    ]
+        output = subprocess.check_output(params, env=os.environ.copy(), universal_newlines=True)
+        print(output)
+    except subprocess.CalledProcessError as e:
+        sys.stderr.write(str(e))
+        sys.stderr.write("Command returned following output: {}".format(e.output))
+        shutil.rmtree(new_dir)
+        sys.stderr.write("Couldn't authenticate agent id: {}\n".format(
+            agent_identity
+        ))
+        sys.stderr.write("Call was: {}\n".format(params))
+        sys.stderr.write("Your environment might not be setup correctly!")
+        write_required_statement()
+        # sys.exit(20)
+
 if agent_identity:
     new_dir = os.path.join(volttron_home, 'keystores', agent_identity)
-    if not os.path.exists(new_dir):
+    agent_keystore_path = os.path.join(new_dir, "keystore.json")
+        
+    if os.path.exists(agent_keystore_path):  # keystore.json file exist only read
+        with open(agent_keystore_path, 'r') as fout:
+            output = fout.read()
+        json_obj = jsonapi.loads(output)
+        pubkey = json_obj["public"]
+        # check if the credential exists already, otherwise, `vctl auth add ...` will remove the agent_name/keystore.json somehow
+        cmd_out = subprocess.check_output(["vctl", "auth", "list"], env=os.environ.copy(), universal_newlines=True)
+        if pubkey not in cmd_out:
+            _add_credential(pubkey, agent_identity)
+    else:
         os.makedirs(new_dir)
-        try:
-            output = subprocess.check_output(['vctl', 'auth', 'keypair'],
-                                             env=os.environ.copy(), universal_newlines=True, stderr=subprocess.STDOUT)
-        except subprocess.CalledProcessError as e:
-            sys.stderr.write("Couldn't get key pair for identity: {}\n".format(
-                agent_identity
-            ))
-            sys.stderr.write("Call was:\n\tvctl auth keypair\n")
-            sys.stderr.write("Output of command: {}".format(e.output))
-            sys.stderr.write("Your environment might not be setup correctly!")
-            os.rmdir(new_dir)
-            write_required_statement()
-            sys.exit(20)
-        else:
-            keystore_file = os.path.join(new_dir, "keystore.json")
-            json_obj = jsonapi.loads(output)
-            with open(keystore_file, 'w') as fout:
-                fout.write(output)
+        _create_new_kystore_json_file(new_dir)
 
-        pubkey = json_obj['public']
-        try:
-            params = ['vctl', 'auth', 'add',
-                      '--credentials', "{}".format(pubkey), '--user_id', agent_identity,
-                      '--capabilities', "edit_config_store",
-                      '--comments', "Added from pycharm-launch.py script."
-                      ]
-            output = subprocess.check_output(params, env=os.environ.copy(), universal_newlines=True)
-        except subprocess.CalledProcessError as e:
-            sys.stderr.write(str(e))
-            sys.stderr.write("Command returned following output: {}".format(e.output))
-            shutil.rmtree(new_dir)
-            sys.stderr.write("Couldn't authenticate agent id: {}\n".format(
-                agent_identity
-            ))
-            sys.stderr.write("Call was: {}\n".format(params))
-            sys.stderr.write("Your environment might not be setup correctly!")
-            write_required_statement()
-            sys.exit(20)
+    
 
 if not parsed.silence:
     sys.stdout.write("For your information (-s) to not print this message.")
     write_required_statement(sys.stdout)
 
+print(f"mod_name: {mod_name}")
 runpy.run_module(mod_name, run_name="__main__")

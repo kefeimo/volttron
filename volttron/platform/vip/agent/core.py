@@ -585,6 +585,7 @@ class Core(BasicCore):
             self.onviperror.send(self, error=error, message=message)
 
     def create_event_handlers(self, state, hello_response_event, running_event):
+        x = 1
         def connection_failed_check():
             # If we don't have a verified connection after 10.0 seconds
             # shut down.

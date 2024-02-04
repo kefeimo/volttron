@@ -64,6 +64,8 @@ from volttron.platform.vip.agent import Agent, Core, RPC
 
 _log = logging.getLogger(__name__)
 
+_log.setLevel(logging.WARNING)
+
 
 class AuthService(Agent):
     def __init__(

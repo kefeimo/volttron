@@ -110,6 +110,12 @@ class ListenerAgent(Agent):
     @PubSub.subscribe('pubsub', '', all_platforms=True)
     def on_match(self, peer, sender, bus, topic, headers, message):
         """Use match_all to receive all messages and print them out."""
+
+        # for x in self._filters:
+        #     if x in topic or x in message:
+        #         self._logfn(message)
+        #         break
+
         self._logfn(
             "Peer: {0}, Sender: {1}:, Bus: {2}, Topic: {3}, Headers: {4}, "
             "Message: \n{5}".format(peer, sender, bus, topic, headers, pformat(message)))

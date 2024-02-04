@@ -37,7 +37,10 @@
 # }}}
 
 # Monkeypatch for gevent
-from volttron.utils import monkey_patch
+try:
+    from volttron.utils import monkey_patch
+except Exception:
+    from utils import monkey_patch
 monkey_patch()
 
 import argparse

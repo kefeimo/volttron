@@ -1,4 +1,5 @@
 {
-    "destination-vip": "tcp://127.0.0.1:22916",
-    "destination-serverkey": null
+    "destination-vip": "tcp://127.0.0.5:22916",
+    "destination-serverkey": "bFYvNA94duLS2AKDRxUf6JDugO9hg5hScQjhLHNJkAk",
+    "custom_topic_list": ["somedevice"]
 }
