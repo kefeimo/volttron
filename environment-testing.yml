@@ -1,0 +1,37 @@
+name: volttron-testing-py312
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+  - pip
+
+  - pyzmq
+  - gevent
+  - grequests
+  - requests
+  - idna >=2.5, <3
+  - ply
+  - psutil
+  - python-dateutil
+  - pytz
+  - PyYAML
+  - setuptools
+  - tzlocal
+  - cryptography
+  - watchdog-gevent
+  - deprecated
+# testing
+  - mock
+  - pytest
+  - pytest-rerunfailures
+  - websocket-client
+  - deepdiff
+  - docker-py
+  - pytest-asyncio
+  - pytest-timeout
+  - pip:
+    - wheel==0.30
+#      - docker
+#      - pytest_asyncio
+#      - pytest_timeout
+

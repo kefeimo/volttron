@@ -95,6 +95,9 @@ def bootstrap(dest, prompt='(volttron)', version=None, verbose=None):
 
 
 def pip(operation, args, verbose=None, offline=False):
+    print("=========")
+    print(f"{operation=}, {args=}, {verbose=}, {offline=}")
+    # sys.exit(0)
     """Call pip in the virtual environment to perform operation."""
     cmd = ['pip', operation]
     if verbose is not None:
@@ -105,7 +108,11 @@ def pip(operation, args, verbose=None, offline=False):
         cmd.extend(['--retries', '0', '--timeout', '1'])
     cmd.extend(args)
     _log.info('+ %s', shescape(cmd))
+    cmd = ['pip', operation]
     cmd[:0] = [sys.executable, '-m']
+
+    # cmd_str = "conda env update -f environment-testing.yml --prune"
+    # cmd = cmd_str.split(" ")
     subprocess.check_call(cmd)
 
 
@@ -146,6 +153,7 @@ def update(operation, verbose=None, offline=False, optional_requirements=[], rab
         target += '[' + ','.join(optional_requirements) + ']'
     args.extend(['--editable', target])
     print(f"Target: {target}")
+
     pip(operation, args, verbose, offline)
 
     try:
