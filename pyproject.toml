@@ -1,0 +1,40 @@
+[tool.poetry]
+name = "volttron-testing"
+version = "0.1.0"
+description = ""
+authors = [""]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+pyzmq = "*"
+gevent = "*"
+grequests = "*"
+requests = "*"
+idna = "^2.5"
+ply = "*"
+psutil = "*"
+python-dateutil = "*"
+pytz = "*"
+PyYAML = "*"
+setuptools = "*"
+tzlocal = "*"
+cryptography = "*"
+watchdog-gevent = "*"
+deprecated = "*"
+wheel = "0.30"
+
+
+[tool.poetry.group.test.dependencies]
+mock = "*"
+pytest = "^7.4"
+pytest-rerunfailures = "*"
+websocket-client = "*"
+deepdiff = "*"
+docker-py = "*"
+pytest-asyncio = "*"
+pytest-timeout = "*"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
