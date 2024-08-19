@@ -150,12 +150,20 @@ class Dnp3Agent(Agent):
             raise Exception("Configuration cannot be empty.")
         return config
 
+    @RPC.allow('CAP_RPC_DUMMY')
     @RPC.export
     def rpc_dummy(self) -> str:
         """
         For testing rpc call
         """
         return "This is a dummy rpc call"
+    
+    @RPC.export
+    def rpc_dummy_proxy(self) -> str:
+        """
+        a proxy funnction to call rpc_dummy
+        """
+        return self.rpc_dummy()
 
     @RPC.export
     def reset_outstation(self):
