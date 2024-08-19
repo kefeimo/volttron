@@ -116,8 +116,20 @@ class FakeAgent(Agent):
         a proxy funnction to call rpc_dummy
         """
         return "This is from def rpc_dummy_wo_auth"
+    
+    @RPC.export
+    # @RPC.allow('can_call_bar')
+    def bar(self):
+        return 'If you can see this, then you have the required capabilities'
 
-
+    @RPC.export
+    # @RPC.allow('can_call_bar')
+    def bar_proxy(self):
+        peer = "agent-a"
+        peer_method = "bar"
+        rs = self.vip.rpc.call(peer, peer_method).get(timeout=10)
+        return f"from bar_proxy: {rs}"
+    
 def main():
     """Main method called to start the agent."""
     utils.vip_main(FakeAgent,
