@@ -33,7 +33,7 @@
 option_requirements = [('pip==24.0', []), ('wheel==0.30', []), ('pyzmq==22.2.1', ['--zmq=bundled'])]
 
 
-install_requires = ['gevent==21.12.0',
+install_requires = ['gevent==23.9.1',
                     'grequests==0.6.0',
                     'requests==2.23.0',
                     'idna<3,>=2.5',
@@ -42,7 +42,7 @@ install_requires = ['gevent==21.12.0',
                     'python-dateutil==2.8.2',
                     'pytz==2022.1',
                     'PyYAML==6.0',
-                    'setuptools>=40.0.0',
+                    'setuptools>=40.0.0,<=70.0.0',
                     # tzlocal 3.0 breaks without the backports.tzinfo package on python < 3.9 https://pypi.org/project/tzlocal/3.0/
                     'tzlocal==2.1',
                     #'pyOpenSSL==19.0.0',
