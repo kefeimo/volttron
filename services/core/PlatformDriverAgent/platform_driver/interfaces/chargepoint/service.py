@@ -22,20 +22,21 @@
 # ===----------------------------------------------------------------------===
 # }}}
 
-import zeep
-from zeep.wsse.username import UsernameToken
-from zeep import Settings
 import logging
 
-logger = logging.getLogger('chargepoint')
+import zeep
+from zeep import Settings
+from zeep.wsse.username import UsernameToken
+
+logger = logging.getLogger("chargepoint")
 
 SERVICE_WSDL_URL = "https://webservices.chargepoint.com/cp_api_5.1.wsdl"
-CPAPI_SUCCESS = '100'
+CPAPI_SUCCESS = "100"
 
 XMPP_EVENTS = [
-    'station_charging_session_start',
-    'station_charging_session_stop',
-    'station_charging_session_update'
+    "station_charging_session_start",
+    "station_charging_session_stop",
+    "station_charging_session_update",
 ]
 
 
@@ -51,7 +52,7 @@ class CPAPIException(Exception):
         self._responseText = response_text
 
     def __str__(self):
-        return '{0} : {1}'.format(self._responseCode, self._responseText)
+        return "{0} : {1}".format(self._responseCode, self._responseText)
 
 
 class CPOrganization:
@@ -72,7 +73,7 @@ class CPOrganization:
 
         :return orgID: 'cpn_id:organization_id'.
         """
-        return '{0}:{1}'.format(self._cpn_id, self._organization_id)
+        return "{0}:{1}".format(self._cpn_id, self._organization_id)
 
 
 class CPGroupManager:
@@ -95,7 +96,7 @@ class CPGroupManager:
         for data in stationData:
             for station in self._stations:
                 if station.id == data.stationID:
-                    station._data['stationLoadData'] = data
+                    station._data["stationLoadData"] = data
 
 
 class CPStationGroup:
@@ -132,7 +133,7 @@ class CPStationGroup:
         self._groupsdata = groupsdata
 
     def __str__(self):
-        return '{0} ({1})'.format(self.name, self.id)
+        return "{0} ({1})".format(self.name, self.id)
 
     @property
     def id(self):
@@ -145,7 +146,9 @@ class CPStationGroup:
     @property
     def organization(self):
         cpn_id, organization_id = self._groupsdata.orgID.split(":")
-        return CPOrganization(cpn_id, organization_id, self._groupsdata.organizationName)
+        return CPOrganization(
+            cpn_id, organization_id, self._groupsdata.organizationName
+        )
 
     @property
     def station_ids(self):
@@ -156,7 +159,7 @@ class CPStation:
     """Wrapper around the getStations() return by Chargepoint API.
 
     Data surrounding a Chargepoint Station can generally be categorized as static or dynamic.  Chargepoint API has two
-    basic calls, getLoad and getStation, that each return station data.  getLoad returns the stationLoadData object, 
+    basic calls, getLoad and getStation, that each return station data.  getLoad returns the stationLoadData object,
     and getStation returns the stationDataExtended object.  These are each kept as separate meta-data
     parameters.
 
@@ -268,21 +271,18 @@ class CPStation:
 
     def __init__(self, cps, sld=None, sde=None):
         self._cps = cps
-        self._data = {
-            'stationLoadData': sld,
-            'stationDataExtended': sde
-        }
+        self._data = {"stationLoadData": sld, "stationDataExtended": sde}
 
     def __str__(self):
-        return '{0} ({1})'.format(self.serial, self.id)
+        return "{0} ({1})".format(self.serial, self.id)
 
     @property
     def _sld(self):
-        return self._data['stationLoadData']
+        return self._data["stationLoadData"]
 
     @property
     def _sde(self):
-        return self._data['stationDataExtended']
+        return self._data["stationDataExtended"]
 
     @property
     def id(self):
@@ -326,10 +326,10 @@ class CPStation:
         return [CPPort(p) for p in self._sde.Port]
 
     def refreshStationData(self):
-        self._data['stationLoadData'] = self._cps.getLoad(stationID=self.id)[0]
+        self._data["stationLoadData"] = self._cps.getLoad(stationID=self.id)[0]
 
     def refreshStationDataExtended(self):
-        self._data['stationDataExtended'] = self._cps.getStation(stationID=self.id)[0]
+        self._data["stationDataExtended"] = self._cps.getStation(stationID=self.id)[0]
 
 
 class CPPort:
@@ -400,30 +400,44 @@ class CPAPIResponse:
 
         :return port_data: Accessed data for given port number and attribute. Else None.
         """
-        if 'Port' in data:
+        if "Port" in data:
             flag = True
             for port in data.Port:
                 if int(port.portNumber) == port_number:
                     flag = False
-                    if attribute in ['Lat', 'Long']:
-                        if 'Geo' in port:
-                            return CPAPIResponse.check_output(attribute, port['Geo'])
+                    if attribute in ["Lat", "Long"]:
+                        if "Geo" in port:
+                            return CPAPIResponse.check_output(attribute, port["Geo"])
                         else:
-                            logger.warning('Geo not defined for this port.')
+                            logger.warning("Geo not defined for this port.")
                             return None
                     else:
                         return CPAPIResponse.check_output(attribute, port)
             if flag:
-                logger.warning("Station does not have a definition for port {0}".format(port_number))
+                logger.warning(
+                    "Station does not have a definition for port {0}".format(
+                        port_number
+                    )
+                )
         else:
-            if (attribute in ['sessionID', 'startTime', 'endTime', 'Energy', 'rfidSerialNumber', 'driverAccountNumber',
-                      'driverName']) and int(data['portNumber']) == port_number:
+            if (
+                attribute
+                in [
+                    "sessionID",
+                    "startTime",
+                    "endTime",
+                    "Energy",
+                    "rfidSerialNumber",
+                    "driverAccountNumber",
+                    "driverName",
+                ]
+            ) and int(data["portNumber"]) == port_number:
                 try:
                     data_attribute = data[attribute]
                     return data_attribute
                 except:
-                    logger.warning(f'Response does not have {attribute} field')
-                    return None 
+                    logger.warning(f"Response does not have {attribute} field")
+                    return None
             else:
                 logger.warning("Response does not have Ports defined")
                 return None
@@ -445,12 +459,14 @@ class CPAPIResponse:
         list = []
         for item in response:
             if not portNum:
-                list.append(getattr(item, name_string)
-                            if name_string in item
-                            else CPAPIResponse.is_not_found(name_string))
+                list.append(
+                    getattr(item, name_string)
+                    if name_string in item
+                    else CPAPIResponse.is_not_found(name_string)
+                )
             else:
                 list.append(CPAPIResponse.get_port_value(portNum, item, name_string))
-        logger.debug(f'{name_string} list for {portNum} is {list}')
+        logger.debug(f"{name_string} list for {portNum} is {list}")
         return list
 
 
@@ -466,13 +482,13 @@ class CPAPIGetAlarmsResponse(CPAPIResponse):
             raise CPAPIException(self.responseCode, self.responseText)
 
     def alarmType(self, port=None):
-        return CPAPIResponse.get_attr_from_response('alarmType', self.alarms, port)
+        return CPAPIResponse.get_attr_from_response("alarmType", self.alarms, port)
 
     def alarmTime(self, port=None):
-        return CPAPIResponse.get_attr_from_response('alarmTime', self.alarms, port)
+        return CPAPIResponse.get_attr_from_response("alarmTime", self.alarms, port)
 
     def clearAlarms(self, port=None):
-        return CPAPIResponse.get_attr_from_response('clearAlarms', self.alarms, port)
+        return CPAPIResponse.get_attr_from_response("clearAlarms", self.alarms, port)
 
 
 class CPAPIGetChargingSessionsResponse(CPAPIResponse):
@@ -487,25 +503,39 @@ class CPAPIGetChargingSessionsResponse(CPAPIResponse):
             raise CPAPIException(self.responseCode, self.responseText)
 
     def sessionID(self, port=None):
-        return CPAPIResponse.get_attr_from_response('sessionID', self.charging_sessions, port)
+        return CPAPIResponse.get_attr_from_response(
+            "sessionID", self.charging_sessions, port
+        )
 
     def startTime(self, port=None):
-        return CPAPIResponse.get_attr_from_response('startTime', self.charging_sessions, port)
+        return CPAPIResponse.get_attr_from_response(
+            "startTime", self.charging_sessions, port
+        )
 
     def endTime(self, port=None):
-        return CPAPIResponse.get_attr_from_response('endTime', self.charging_sessions, port)
+        return CPAPIResponse.get_attr_from_response(
+            "endTime", self.charging_sessions, port
+        )
 
     def Energy(self, port=None):
-        return CPAPIResponse.get_attr_from_response('Energy', self.charging_sessions, port)
+        return CPAPIResponse.get_attr_from_response(
+            "Energy", self.charging_sessions, port
+        )
 
     def rfidSerialNumber(self, port=None):
-        return CPAPIResponse.get_attr_from_response('rfidSerialNumber', self.charging_sessions, port)
+        return CPAPIResponse.get_attr_from_response(
+            "rfidSerialNumber", self.charging_sessions, port
+        )
 
     def driverAccountNumber(self, port=None):
-        return CPAPIResponse.get_attr_from_response('driverAccountNumber', self.charging_sessions, port)
+        return CPAPIResponse.get_attr_from_response(
+            "driverAccountNumber", self.charging_sessions, port
+        )
 
     def driverName(self, port=None):
-        return CPAPIResponse.get_attr_from_response('driverName', self.charging_sessions, port)
+        return CPAPIResponse.get_attr_from_response(
+            "driverName", self.charging_sessions, port
+        )
 
 
 class CPAPIGetStationStatusResponse(CPAPIResponse):
@@ -520,10 +550,10 @@ class CPAPIGetStationStatusResponse(CPAPIResponse):
             raise CPAPIException(self.responseCode, self.responseText)
 
     def Status(self, port=None):
-        return CPAPIResponse.get_attr_from_response('Status', self.status, port)
+        return CPAPIResponse.get_attr_from_response("Status", self.status, port)
 
     def TimeStamp(self, port=None):
-        return CPAPIResponse.get_attr_from_response('TimeStamp', self.status, port)
+        return CPAPIResponse.get_attr_from_response("TimeStamp", self.status, port)
 
 
 class CPAPIGetStationsResponse(CPAPIResponse):
@@ -538,169 +568,218 @@ class CPAPIGetStationsResponse(CPAPIResponse):
             raise CPAPIException(self.responseCode, self.responseText)
 
     def stationID(self, port=None):
-        return CPAPIResponse.get_attr_from_response('stationID', self.stations, port)
+        return CPAPIResponse.get_attr_from_response("stationID", self.stations, port)
 
     def stationManufacturer(self, port=None):
-        return CPAPIResponse.get_attr_from_response('stationManufacturer', self.stations, port)
+        return CPAPIResponse.get_attr_from_response(
+            "stationManufacturer", self.stations, port
+        )
 
     def stationModel(self, port=None):
-        return CPAPIResponse.get_attr_from_response('stationModel', self.stations, port)
+        return CPAPIResponse.get_attr_from_response("stationModel", self.stations, port)
 
     def stationMacAddr(self, port=None):
-        return CPAPIResponse.get_attr_from_response('stationMacAddr', self.stations, port)
+        return CPAPIResponse.get_attr_from_response(
+            "stationMacAddr", self.stations, port
+        )
 
     def stationSerialNum(self, port=None):
-        return CPAPIResponse.get_attr_from_response('stationSerialNum', self.stations, port)
+        return CPAPIResponse.get_attr_from_response(
+            "stationSerialNum", self.stations, port
+        )
 
     def Address(self, port=None):
-        return CPAPIResponse.get_attr_from_response('Address', self.stations, port)
+        return CPAPIResponse.get_attr_from_response("Address", self.stations, port)
 
     def City(self, port=None):
-        return CPAPIResponse.get_attr_from_response('City', self.stations, port)
+        return CPAPIResponse.get_attr_from_response("City", self.stations, port)
 
     def State(self, port=None):
-        return CPAPIResponse.get_attr_from_response('State', self.stations, port)
+        return CPAPIResponse.get_attr_from_response("State", self.stations, port)
 
     def Country(self, port=None):
-        return CPAPIResponse.get_attr_from_response('Country', self.stations, port)
+        return CPAPIResponse.get_attr_from_response("Country", self.stations, port)
 
     def postalCode(self, port=None):
-        return CPAPIResponse.get_attr_from_response('postalCode', self.stations, port)
+        return CPAPIResponse.get_attr_from_response("postalCode", self.stations, port)
 
     def numPorts(self, port=None):
-        return CPAPIResponse.get_attr_from_response('numPorts', self.stations, port)
+        return CPAPIResponse.get_attr_from_response("numPorts", self.stations, port)
 
     def currencyCode(self, port=None):
-        return CPAPIResponse.get_attr_from_response('currencyCode', self.stations, port)
+        return CPAPIResponse.get_attr_from_response("currencyCode", self.stations, port)
 
     def orgID(self, port=None):
-        return CPAPIResponse.get_attr_from_response('orgID', self.stations, port)
+        return CPAPIResponse.get_attr_from_response("orgID", self.stations, port)
 
     def mainPhone(self, port=None):
-        return CPAPIResponse.get_attr_from_response('mainPhone', self.stations, port)
+        return CPAPIResponse.get_attr_from_response("mainPhone", self.stations, port)
 
     def organizationName(self, port=None):
-        return CPAPIResponse.get_attr_from_response('organizationName', self.stations, port)
+        return CPAPIResponse.get_attr_from_response(
+            "organizationName", self.stations, port
+        )
 
     def sgID(self, port=None):
-        return CPAPIResponse.get_attr_from_response('sgID', self.stations, port)
+        return CPAPIResponse.get_attr_from_response("sgID", self.stations, port)
 
     def sgName(self, port=None):
-        return CPAPIResponse.get_attr_from_response('sgName', self.stations, port)
+        return CPAPIResponse.get_attr_from_response("sgName", self.stations, port)
 
     def portNumber(self, port=None):
-        return CPAPIResponse.get_attr_from_response('portNumber', self.stations, port)
+        return CPAPIResponse.get_attr_from_response("portNumber", self.stations, port)
 
     def stationName(self, port=None):
-        return CPAPIResponse.get_attr_from_response('stationName', self.stations, port)
+        return CPAPIResponse.get_attr_from_response("stationName", self.stations, port)
 
     def Lat(self, port=None):
-        return CPAPIResponse.get_attr_from_response('Lat', self.stations, port)
+        return CPAPIResponse.get_attr_from_response("Lat", self.stations, port)
 
     def Long(self, port=None):
-        return CPAPIResponse.get_attr_from_response('Long', self.stations, port)
+        return CPAPIResponse.get_attr_from_response("Long", self.stations, port)
 
     def Description(self, port=None):
-        return CPAPIResponse.get_attr_from_response('Description', self.stations, port)
+        return CPAPIResponse.get_attr_from_response("Description", self.stations, port)
 
     def Reservable(self, port=None):
-        return CPAPIResponse.get_attr_from_response('Reservable', self.stations, port)
+        return CPAPIResponse.get_attr_from_response("Reservable", self.stations, port)
 
     def Level(self, port=None):
-        return CPAPIResponse.get_attr_from_response('Level', self.stations, port)
+        return CPAPIResponse.get_attr_from_response("Level", self.stations, port)
 
     def Mode(self, port=None):
-        return CPAPIResponse.get_attr_from_response('Mode', self.stations, port)
+        return CPAPIResponse.get_attr_from_response("Mode", self.stations, port)
 
     def Voltage(self, port=None):
-        return CPAPIResponse.get_attr_from_response('Voltage', self.stations, port)
+        return CPAPIResponse.get_attr_from_response("Voltage", self.stations, port)
 
     def Current(self, port=None):
-        return CPAPIResponse.get_attr_from_response('Current', self.stations, port)
+        return CPAPIResponse.get_attr_from_response("Current", self.stations, port)
 
     def Power(self, port=None):
-        return CPAPIResponse.get_attr_from_response('Power', self.stations, port)
+        return CPAPIResponse.get_attr_from_response("Power", self.stations, port)
 
     def Connector(self, port=None):
-        return CPAPIResponse.get_attr_from_response('Connector', self.stations, port)
+        return CPAPIResponse.get_attr_from_response("Connector", self.stations, port)
 
     @staticmethod
     def pricing_helper(attribute, station):
-        if 'Pricing' in station:
-            return station.Pricing[0][attribute] \
-                if attribute in station.Pricing[0] \
+        if "Pricing" in station:
+            return (
+                station.Pricing[0][attribute]
+                if attribute in station.Pricing[0]
                 else CPAPIResponse.is_not_found(attribute)
+            )
         else:
             logger.warning("No Pricing defined for station")
             return None
 
     def Type(self, port=None):
         if port:
-            return CPAPIResponse.get_attr_from_response('Type', self.stations, port)
+            return CPAPIResponse.get_attr_from_response("Type", self.stations, port)
         else:
-            return [self.pricing_helper('Type', station) for station in self.stations]
+            return [self.pricing_helper("Type", station) for station in self.stations]
 
     def startTime(self, port=None):
         if port:
-            logger.debug(f'startTime port is {port}')
-            return CPAPIResponse.get_attr_from_response('startTime', self.stations, port)
+            logger.debug(f"startTime port is {port}")
+            return CPAPIResponse.get_attr_from_response(
+                "startTime", self.stations, port
+            )
         else:
-            return [self.pricing_helper('startTime', station) for station in self.stations]
+            return [
+                self.pricing_helper("startTime", station) for station in self.stations
+            ]
 
     def endTime(self, port=None):
         if port:
-            logger.debug(f'endTime port is {port}')
-            return CPAPIResponse.get_attr_from_response('endTime', self.stations, port)
+            logger.debug(f"endTime port is {port}")
+            return CPAPIResponse.get_attr_from_response("endTime", self.stations, port)
         else:
-            return [self.pricing_helper('endTime', station) for station in self.stations]
+            return [
+                self.pricing_helper("endTime", station) for station in self.stations
+            ]
 
     def minPrice(self, port=None):
         if port:
-            return CPAPIResponse.get_attr_from_response('minPrice', self.stations, port)
+            return CPAPIResponse.get_attr_from_response("minPrice", self.stations, port)
         else:
-            return [self.pricing_helper('minPrice', station) for station in self.stations]
+            return [
+                self.pricing_helper("minPrice", station) for station in self.stations
+            ]
 
     def maxPrice(self, port=None):
         if port:
-            return CPAPIResponse.get_attr_from_response('maxPrice', self.stations, port)
+            return CPAPIResponse.get_attr_from_response("maxPrice", self.stations, port)
         else:
-            return [self.pricing_helper('maxPrice', station) for station in self.stations]
+            return [
+                self.pricing_helper("maxPrice", station) for station in self.stations
+            ]
 
     def unitPricePerHour(self, port=None):
         if port:
-            return CPAPIResponse.get_attr_from_response('unitPricePerHour', self.stations, port)
+            return CPAPIResponse.get_attr_from_response(
+                "unitPricePerHour", self.stations, port
+            )
         else:
-            return [self.pricing_helper('unitPricePerHour', station) for station in self.stations]
+            return [
+                self.pricing_helper("unitPricePerHour", station)
+                for station in self.stations
+            ]
 
     def unitPricePerSession(self, port=None):
         if port:
-            return CPAPIResponse.get_attr_from_response('unitPricePerSession', self.stations, port)
+            return CPAPIResponse.get_attr_from_response(
+                "unitPricePerSession", self.stations, port
+            )
         else:
-            return [self.pricing_helper('unitPricePerSession', station) for station in self.stations]
+            return [
+                self.pricing_helper("unitPricePerSession", station)
+                for station in self.stations
+            ]
 
     def unitPricePerKWh(self, port=None):
         if port:
-            return CPAPIResponse.get_attr_from_response('unitPricePerKWh', self.stations, port)
+            return CPAPIResponse.get_attr_from_response(
+                "unitPricePerKWh", self.stations, port
+            )
         else:
-            return [self.pricing_helper('unitPricePerKWh', station) for station in self.stations]
+            return [
+                self.pricing_helper("unitPricePerKWh", station)
+                for station in self.stations
+            ]
 
     def unitPriceForFirst(self, port=None):
         if port:
-            return CPAPIResponse.get_attr_from_response('unitPriceForFirst', self.stations, port)
+            return CPAPIResponse.get_attr_from_response(
+                "unitPriceForFirst", self.stations, port
+            )
         else:
-            return [self.pricing_helper('unitPriceForFirst', station) for station in self.stations]
+            return [
+                self.pricing_helper("unitPriceForFirst", station)
+                for station in self.stations
+            ]
 
     def unitPricePerHourThereafter(self, port=None):
         if port:
-            return CPAPIResponse.get_attr_from_response('unitPricePerHourThereafter', self.stations, port)
+            return CPAPIResponse.get_attr_from_response(
+                "unitPricePerHourThereafter", self.stations, port
+            )
         else:
-            return [self.pricing_helper('unitPricePerHourThereafter', station) for station in self.stations]
+            return [
+                self.pricing_helper("unitPricePerHourThereafter", station)
+                for station in self.stations
+            ]
 
     def sessionTime(self, port=None):
         if port:
-            return CPAPIResponse.get_attr_from_response('sessionTime', self.stations, port)
+            return CPAPIResponse.get_attr_from_response(
+                "sessionTime", self.stations, port
+            )
         else:
-            return [self.pricing_helper('sessionTime', station) for station in self.stations]
+            return [
+                self.pricing_helper("sessionTime", station) for station in self.stations
+            ]
 
 
 class CPAPIGetStationRightsResponse(CPAPIResponse):
@@ -727,21 +806,29 @@ class CPAPIGetLoadResponse(CPAPIResponse):
             raise CPAPIException(self.responseCode, self.responseText)
 
     def stationLoad(self, port=None):
-        return CPAPIResponse.get_attr_from_response('stationLoad', self.station_data, port)
+        return CPAPIResponse.get_attr_from_response(
+            "stationLoad", self.station_data, port
+        )
 
     def portLoad(self, port=None):
-        return CPAPIResponse.get_attr_from_response('portLoad', self.station_data, port)
+        return CPAPIResponse.get_attr_from_response("portLoad", self.station_data, port)
 
     def allowedLoad(self, port=None):
         if port:
-            return CPAPIResponse.get_attr_from_response('allowedLoad', self.station_data, port)
+            return CPAPIResponse.get_attr_from_response(
+                "allowedLoad", self.station_data, port
+            )
         else:
             list = []
             for station in self.station_data:
                 al = 0.0
                 for port in station.Port:
-                    allowed_load = self.get_port_value(int(port.portNumber), station, 'allowedLoad')
-                    shed_state = self.get_port_value(int(port.portNumber), station, 'shedState')
+                    allowed_load = self.get_port_value(
+                        int(port.portNumber), station, "allowedLoad"
+                    )
+                    shed_state = self.get_port_value(
+                        int(port.portNumber), station, "shedState"
+                    )
                     if shed_state and allowed_load > al:
                         al = allowed_load
                 list.append(al)
@@ -749,39 +836,49 @@ class CPAPIGetLoadResponse(CPAPIResponse):
 
     def percentShed(self, port=None):
         if port:
-            return CPAPIResponse.get_attr_from_response('percentShed', self.station_data, port)
+            return CPAPIResponse.get_attr_from_response(
+                "percentShed", self.station_data, port
+            )
         else:
             list = []
             for station in self.station_data:
                 ps = 0.0
                 for port in station.Port:
-                    percent_shed = self.get_port_value(int(port.portNumber), station, 'percentShed')
-                    shed_state = self.get_port_value(int(port.portNumber), station, 'shedState')
+                    percent_shed = self.get_port_value(
+                        int(port.portNumber), station, "percentShed"
+                    )
+                    shed_state = self.get_port_value(
+                        int(port.portNumber), station, "shedState"
+                    )
                     if shed_state and percent_shed > ps:
                         ps = percent_shed
                 list.append(ps)
             return list
 
     def shedState(self, port=None):
-        return CPAPIResponse.get_attr_from_response('shedState', self.station_data, port)
+        return CPAPIResponse.get_attr_from_response(
+            "shedState", self.station_data, port
+        )
 
 
 class CPService:
     """
-        Python wrapper around the Chargepoint WebServices API.
+    Python wrapper around the Chargepoint WebServices API.
 
-        Current Version: 5.1
-        Docs: ChargePoint_Web_Services_API_Guide_Ver5.1_Rev1.13.pdf
+    Current Version: 5.1
+    Docs: ChargePoint_Web_Services_API_Guide_Ver5.1_Rev1.13.pdf
     """
 
     def __init__(self, username=None, password=None):
         """
-            Use a default API Username/Password if nothing is provided.  These credentials are
-            created on the chargepoint website: htpp://na.chargepoint.com, tab=organizations
+        Use a default API Username/Password if nothing is provided.  These credentials are
+        created on the chargepoint website: htpp://na.chargepoint.com, tab=organizations
         """
         self._username = username
         self._password = password
         self._zeep_client = None
+        logger.warning(f"================ {username=}")
+        logger.warning(f"================ {password=}")
 
     @property
     def _client(self):
@@ -800,10 +897,16 @@ class CPService:
 
     def set_security_token(self):
         # Add SOAP Security tokens
-        #TODO:might need to put this in config
-        #NOTE: wihtout this setting, zeep will not get result
-        settins = Settings(strict=False, xml_huge_tree=True, xsd_ignore_sequence_order=True)
-        self._zeep_client = zeep.Client(SERVICE_WSDL_URL, wsse=UsernameToken(self._username, self._password),settings=settins)
+        # TODO:might need to put this in config
+        # NOTE: wihtout this setting, zeep will not get result
+        settins = Settings(
+            strict=False, xml_huge_tree=True, xsd_ignore_sequence_order=True
+        )
+        self._zeep_client = zeep.Client(
+            SERVICE_WSDL_URL,
+            wsse=UsernameToken(self._username, self._password),
+            settings=settins,
+        )
 
     def set_client(self, client):
         self._zeep_client = client
@@ -832,7 +935,7 @@ class CPService:
         :returns SOAP reply object.  If successful, there will be a responseCode of '100'.
         """
 
-        searchQuery = self._client.get_type('ns0:clearAlarmsSearchQuery')()
+        searchQuery = self._client.get_type("ns0:clearAlarmsSearchQuery")()
         for k, v in kwargs.items():
             setattr(searchQuery, k, v)
         response = self._soap_service.clearAlarms(searchQuery)
@@ -848,13 +951,13 @@ class CPService:
         :returns SOAP reply object.  If successful, there will be a responseCode of '100'.
         """
 
-        searchQuery = self._client.get_type('ns0:shedQueryInputData')()
-        if 'stationID' in kwargs.keys():
-            setattr(searchQuery, 'shedStation', {'stationID': kwargs['stationID']})
-        elif 'sgID' in kwargs.keys():
-            setattr(searchQuery, 'shedGroup', {'sgID': kwargs['sgID']})
+        searchQuery = self._client.get_type("ns0:shedQueryInputData")()
+        if "stationID" in kwargs.keys():
+            setattr(searchQuery, "shedStation", {"stationID": kwargs["stationID"]})
+        elif "sgID" in kwargs.keys():
+            setattr(searchQuery, "shedGroup", {"sgID": kwargs["sgID"]})
         else:
-            raise Exception('Must have either sgID or stationID as kwarg')
+            raise Exception("Must have either sgID or stationID as kwarg")
 
         response = self._soap_service.clearShedState(searchQuery)
         return CPAPIResponse(response)
@@ -902,7 +1005,7 @@ class CPService:
             }
         """
 
-        searchQuery = self._client.get_type('ns0:getAlarmsSearchQuery')()
+        searchQuery = self._client.get_type("ns0:getAlarmsSearchQuery")()
         for k, v in kwargs.items():
             setattr(searchQuery, k, v)
         response = self._soap_service.getAlarms(searchQuery)
@@ -977,7 +1080,7 @@ class CPService:
             }
         """
 
-        searchQuery = self._client.get_type('ns0:sessionSearchdata')()
+        searchQuery = self._client.get_type("ns0:sessionSearchdata")()
         for k, v in kwargs.items():
             setattr(searchQuery, k, v)
         response = self._soap_service.getChargingSessionData(searchQuery)
@@ -1072,7 +1175,7 @@ class CPService:
             }
         """
 
-        searchQuery = self._client.get_type('ns0:getOrgsAndStationGroupsSearchQuery')()
+        searchQuery = self._client.get_type("ns0:getOrgsAndStationGroupsSearchQuery")()
         for k, v in kwargs.items():
             setattr(searchQuery, k, v)
         response = self._soap_service.getOrgsAndStationGroups(searchQuery)
@@ -1227,7 +1330,7 @@ class CPService:
             }
         """
 
-        searchQuery = self._client.get_type('ns0:stationRightsSearchRequest')()
+        searchQuery = self._client.get_type("ns0:stationRightsSearchRequest")()
         for k, v in kwargs.items():
             setattr(searchQuery, k, v)
         response = self._soap_service.getStationRights(searchQuery)
@@ -1257,7 +1360,7 @@ class CPService:
                 moreFlag = 0
             }
         """
-        response = self._soap_service.getStationStatus({'stationID': station})
+        response = self._soap_service.getStationStatus({"stationID": station})
         return CPAPIGetStationStatusResponse(response)
 
     def getStations(self, **kwargs):
@@ -1373,7 +1476,7 @@ class CPService:
             }
         """
 
-        searchQuery = self._client.get_type('ns0:stationSearchRequestExtended')()
+        searchQuery = self._client.get_type("ns0:stationSearchRequestExtended")()
         for k, v in kwargs.items():
             setattr(searchQuery, k, v)
         response = self._soap_service.getStations(searchQuery)
@@ -1460,7 +1563,7 @@ class CPService:
             }
         """
 
-        searchQuery = self._client.get_type('ns0:getUsersSearchRequest')()
+        searchQuery = self._client.get_type("ns0:getUsersSearchRequest")()
         for k, v in kwargs.items():
             setattr(searchQuery, k, v)
         response = self._soap_service.getUsers(searchQuery)
@@ -1498,19 +1601,21 @@ class CPService:
 
         :returns SOAP reply object.  If successful, there will be a responseCode of '100'.
         """
-    
-        searchQuery = self._client.get_type('ns0:shedLoadQueryInputData')()
-        port = kwargs.pop('portNumber', None)
-        query_params = {'stationID': kwargs['stationID']}
+
+        searchQuery = self._client.get_type("ns0:shedLoadQueryInputData")()
+        port = kwargs.pop("portNumber", None)
+        query_params = {"stationID": kwargs["stationID"]}
         if port:
-            port_params = {'allowedLoadPerPort': kwargs.pop('allowedLoad', None),
-                           'percentShedPerPort': kwargs.pop('percentShed', None),
-                           'portNumber': port}
-            query_params['Ports'] = {'Port': [port_params]}
+            port_params = {
+                "allowedLoadPerPort": kwargs.pop("allowedLoad", None),
+                "percentShedPerPort": kwargs.pop("percentShed", None),
+                "portNumber": port,
+            }
+            query_params["Ports"] = {"Port": [port_params]}
         else:
-            query_params['allowedLoadPerStation'] = kwargs.pop('allowedLoad', None)
-            query_params['percentShedPerStation'] = kwargs.pop('percentShed', None)
-        setattr(searchQuery, 'shedStation', query_params)
+            query_params["allowedLoadPerStation"] = kwargs.pop("allowedLoad", None)
+            query_params["percentShedPerStation"] = kwargs.pop("percentShed", None)
+        setattr(searchQuery, "shedStation", query_params)
         response = self._soap_service.shedLoad(searchQuery)
         return CPAPIResponse(response)
 
