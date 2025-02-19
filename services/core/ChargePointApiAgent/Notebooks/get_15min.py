@@ -1,7 +1,9 @@
 import functools
 import os
+import re
 import sqlite3
 import sys
+from datetime import datetime, timedelta
 
 import pandas as pd
 import zeep
@@ -60,6 +62,58 @@ def paginated_api_call(
         return wrapper
 
     return decorator_api_call
+
+
+def parse_time_duration(prior_to):
+    """
+    Parses a time duration string into its numeric and unit parts.
+
+    Args:
+    prior_to (str): A string representing the duration, such as "1h", "4.5h", "34d".
+
+    Returns:
+    tuple: A tuple containing the numeric part (float) and the unit (str), or None if invalid.
+    """
+    # Define a regular expression to match valid inputs
+    pattern = r"^(\d+(?:\.\d+)?)([hdw])$"
+
+    # Match the input string against the pattern
+    match = re.match(pattern, prior_to)
+
+    if match:
+        # Extract the numeric part and the unit
+        value = float(match.group(1))
+        unit = match.group(2)
+        return (value, unit)
+    else:
+        # Return None or raise an error if the input is invalid
+        print("Invalid input. Valid examples include '1h', '4.5h', '34d'.")
+        return None
+
+
+def get_past_timestamp(prior_to):
+    """
+    # Example Usage
+    print(get_past_timestamp("2h"))  # 2 hours from now
+    print(get_past_timestamp("5d"))  # 5 days from now
+    """
+    amount, unit = parse_time_duration(prior_to)
+
+    now = datetime.now()
+    if unit == "h":
+        return now - timedelta(hours=amount)
+    elif unit == "d":
+        return now - timedelta(days=amount)
+    elif unit == "w":
+        return now - timedelta(weeks=amount)
+    # elif unit == "m":
+    #     # Approximate month as 30 days
+    #     return now - timedelta(days=amount * 30)
+    # elif unit == "y":
+    #     # Approximate year as 365 days
+    #     return now - timedelta(days=amount * 365)
+    else:
+        raise ValueError("Invalid unit. Only 'h', 'd', 'w' are accepted.")
 
 
 class EnergyDataHandler:
@@ -129,7 +183,7 @@ class EnergyDataHandler:
             target_df_copy[column] = target_df_copy[column].astype(str)
             reference_df_copy[column] = reference_df_copy[column].astype(str)
         # Set indices to the columns used for determining duplicates
-        print(f"{pk_columns = }")
+        # print(f"{pk_columns = }")
         indexed_A = reference_df_copy.set_index(pk_columns)
         indexed_B = target_df_copy.set_index(pk_columns)
 
@@ -193,12 +247,12 @@ class EnergyDataHandler:
             print(f"Error removing table {table_name}: {e}")
 
 
-class ChargePointApiAgent:
+class ChargePointApi:
     pass
 
     def __init__(self, username, password) -> None:
-        # self.username = username
-        # self.password = password
+        self.username = username
+        self.password = password
         SERVICE_WSDL_URL = "https://webservices.fd.chargepoint.com/cp_api_5.1.wsdl"
         settins = Settings()
         self.client = zeep.Client(
@@ -206,6 +260,11 @@ class ChargePointApiAgent:
             wsse=UsernameToken(username, password),
             settings=settins,
         )
+
+
+class Get15minChargingSessionDataAPI(ChargePointApi):
+    def __init__(self, username, password):
+        super().__init__(username, password)
 
     def _get15minChargingSessionData(
         self, sessionID: int, energyConsumedInterval: bool = False
@@ -221,7 +280,7 @@ class ChargePointApiAgent:
 
     def get15minCharginSessionDataCollection(
         self, session_ids: list[int], isEnergyConsumedIntervalDelta: bool = False
-    ):
+    ) -> list[dict]:
         fifteen_min_data_collection = []
         for i, session_id in enumerate(session_ids):
             single_session_15min_data: dict = self._get15minChargingSessionData(
@@ -250,8 +309,61 @@ class ChargePointApiAgent:
                     print(f"{e = }, {session_id = }")
         return fifteen_min_data_collection
 
-    def _getChargingSessionData(self, kwargs):
-        return self.client.service.getChargingSessionData(kwargs)
+    def get15minCharginSessionDataAPI(
+        self,
+        stationID: str = None,
+        sessionID: int = None,
+        userID=None,
+        stationName: str = None,
+        Address: str = None,
+        City: str = None,
+        State: str = None,
+        Country=None,
+        postalCode=None,
+        Proximity=None,
+        proximityUnit=None,
+        fromTimeStamp: str = None,
+        toTimeStamp: str = None,
+        startRecord: int = None,
+        Geo=None,
+        stationIDs: list[str] = None,
+        activeSessionsOnly=None,
+        portNumber: str = None,
+    ):
+        session_data_res = GetChargingSessionDataAPI(
+            self.username, self.password
+        ).getChargingSessionDataAPI(
+            stationID=stationID,
+            sessionID=sessionID,
+            userID=userID,
+            stationName=stationName,
+            Address=Address,
+            City=City,
+            State=State,
+            Country=Country,
+            postalCode=postalCode,
+            Proximity=Proximity,
+            proximityUnit=proximityUnit,
+            fromTimeStamp=fromTimeStamp,
+            toTimeStamp=toTimeStamp,
+            startRecord=startRecord,
+            Geo=Geo,
+            stationIDs=stationIDs,
+            activeSessionsOnly=activeSessionsOnly,
+        )
+        df_session_data = pd.DataFrame(session_data_res)
+        if portNumber is not None:
+            df_session_data = df_session_data[
+                df_session_data["portNumber"] == portNumber
+            ]
+        session_ids = df_session_data["sessionID"].to_list()
+        print(f"{session_ids = }")
+        return self.get15minCharginSessionDataCollection(session_ids)
+
+
+class GetChargingSessionDataAPI(ChargePointApi):
+    def __init__(self, username, password):
+        super().__init__(username, password)
 
     # Wrap the actual data-fetching function
     @paginated_api_call(
@@ -260,7 +372,7 @@ class ChargePointApiAgent:
     )
     def _getChargingSessionDataAll(self, **kwargs):
         # Pass the client and parameters to the `_getChargingSessionData`
-        return self._getChargingSessionData(kwargs)
+        return self.client.service.getChargingSessionData(kwargs)
 
     def getChargingSessionDataAPI(
         self,
@@ -316,7 +428,7 @@ class ChargePointApiAgent:
 def main():
     username = "9c2fc57f048fd5c2f740dcf8e0a6f69c677c424289bda1736196674"
     password = "d67f1b3e02ff57fb6d90fc8a770db00b"
-    charge_point = ChargePointApiAgent(username, password)
+    charge_point = Get15minChargingSessionDataAPI(username, password)
     # resonse = charge_point._get15minChargingSessionData(sessionID=101542479) # 101268659
     resonse = charge_point.get15minCharginSessionDataCollection(
         session_ids=[101542479, 101268659, 100412719]
@@ -369,11 +481,13 @@ def main():
 def main2():
     username = "9c2fc57f048fd5c2f740dcf8e0a6f69c677c424289bda1736196674"
     password = "d67f1b3e02ff57fb6d90fc8a770db00b"
-    charge_point = ChargePointApiAgent(username, password)
+    charge_point = GetChargingSessionDataAPI(username, password)
     res = charge_point.getChargingSessionDataAPI(
+        stationID="5:15504761",
         fromTimeStamp="2024-12-01",
         # toTimeStamp="2024-12-15"
     )
+    print(pd.DataFrame(res).info())
     # print(pd.DataFrame(res))
 
     # Get the directory of the current script
@@ -386,7 +500,7 @@ def main2():
     table_schema = [
         ("stationID", "TEXT"),
         ("stationName", "TEXT"),
-        ("portNumber", "INTEGER"),
+        ("portNumber", "TEXT"),
         ("Address", "TEXT"),
         ("City", "TEXT"),
         ("State", "TEXT"),
@@ -394,14 +508,14 @@ def main2():
         ("postalCode", "TEXT"),
         (
             "sessionID",
-            "TEXT",
+            "INTEGER",
         ),  # ("sessionID", "INTEGER PRIMARY KEY"),  # Assuming sessionID is unique
         ("Energy", "REAL"),
         ("startTime", "TEXT"),  # Storing as ISO8601 string
         ("endTime", "TEXT"),  # Storing as ISO8601 string
         ("totalChargingDuration", "TEXT"),  # Could be INTEGER if stored as seconds
         ("totalSessionDuration", "TEXT"),  # Could be INTEGER if stored as seconds
-        ("userID", "INTEGER"),
+        ("userID", "TEXT"),
         ("startBatteryPercentage", "REAL"),
         ("stopBatteryPercentage", "REAL"),
         ("recordNumber", "INTEGER"),
@@ -436,9 +550,62 @@ def main2():
     db_handler.close()
 
 
+def main3():
+    username = "9c2fc57f048fd5c2f740dcf8e0a6f69c677c424289bda1736196674"
+    password = "d67f1b3e02ff57fb6d90fc8a770db00b"
+    charge_point = Get15minChargingSessionDataAPI(username, password)
+    # resonse = charge_point._get15minChargingSessionData(sessionID=101542479) # 101268659
+    resonse = charge_point.get15minCharginSessionDataAPI(
+        stationID="5:15504761", portNumber="2"
+    )  # 101268659
+    # print(resonse)
+    df = pd.DataFrame(resonse)
+    # print(df)
+
+    # Get the directory of the current script
+    script_directory = os.path.dirname(os.path.abspath(__file__))
+    # print("Script is running in:", script_directory)
+    db_path = os.path.join(script_directory, "chargePoint_testing.db")
+    # Initialize the handler
+    db_handler = EnergyDataHandler(db_path)
+    table_name = "get15minCharginSessionData"
+    table_schema = [
+        ("stationTime", "TEXT"),
+        ("energyConsumed", "REAL"),
+        ("peakPower", "REAL"),
+        ("rollingPowerAvg", "REAL"),
+        ("sessionID", "INTEGER"),
+    ]
+    # db_handler.remove_table(table_name)
+    db_handler.create_table(table_name, table_schema)
+    # Insert data
+    results = db_handler.insert_data_to_table(
+        table_name,
+        df,
+        # pk_columns=["stationTime", "sessionID"],
+        # pk_columns=[
+        #     "stationTime",
+        #     "sessionID",
+        #     "peakPower",
+        #     "rollingPowerAvg",
+        #     "sessionID",
+        # ],
+        pk_columns="a",
+    )
+
+    # # Query and print the data
+    # results = db_handler.query_data_from_table(table_name)
+    print(results)
+    # for row in results:
+    #     print(row)
+
+    # Close the database connection
+    db_handler.close()
+
+
 if __name__ == "__main__":
     # Entry point for script
     try:
-        sys.exit(main())
+        sys.exit(main3())
     except KeyboardInterrupt:
         pass
