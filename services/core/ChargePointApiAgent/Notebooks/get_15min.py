@@ -121,6 +121,7 @@ class EnergyDataHandler:
         """Initialize the database connection to a persistent SQLite database."""
         self.db_path = db_path
         self.conn = self.create_connection()
+        self.cursor = self.conn.cursor()
 
     def create_connection(self):
         """Create and return a database connection."""
@@ -132,7 +133,7 @@ class EnergyDataHandler:
             print(f"Error connecting to database: {e}")
             return None
 
-    def create_table(self, table_name, schema):
+    def create_table(self, table_name, schema, primary_keys):
         """
             Create a table if it does not exist, using a defined schema.
 
@@ -148,19 +149,26 @@ class EnergyDataHandler:
             ("rollingPowerAvg", "REAL"),
             ("sessionID", "INTEGER PRIMARY KEY")
         ]
+
+            primary_keys = ['stationTime', 'sessionID']
         """
         try:
             # Build the column definitions from the schema
-            columns = ", ".join(
-                [f"{col_name} {data_type}" for col_name, data_type in schema]
+            columns = (
+                ", ".join([f"{col_name} {data_type}" for col_name, data_type in schema])
+                + ","
             )
+            # Prepare the PRIMARY KEY clause
+            primary_keys_sql = f"PRIMARY KEY ({', '.join(primary_keys)})"
 
             # Create SQL query for creating the table
             query = f"""
             CREATE TABLE IF NOT EXISTS {table_name} (
                 {columns}
+                {primary_keys_sql}
             )
             """
+            # print(f"{query = }")
             self.conn.execute(query)
             self.conn.commit()
             print("Table created or verified successfully")
@@ -176,8 +184,6 @@ class EnergyDataHandler:
         """Filter out duplicates based on 'stationTime' and 'sessionID'."""
         target_df_copy = target_df.copy()
         reference_df_copy = reference_df.copy()
-        # if pk_columns is None:
-        #     pk_columns = target_df.columns
         # Force columns to be of type string for comparison
         for column, dtype in reference_df_copy.dtypes.items():
             target_df_copy[column] = target_df_copy[column].astype(str)
@@ -193,21 +199,13 @@ class EnergyDataHandler:
         target_df_filtered = target_df[unique_indices]
         return target_df_filtered
 
-    def insert_data_to_table(
-        self, table_name, df: pd.DataFrame, pk_columns: str | list[str] = None
-    ) -> pd.DataFrame:
-        """Insert data from a pandas DataFrame, filtering duplicates based on pk_columns.
-        example pk_columns = ["stationTime", "sessionID"], when pk_columns = "all" then filter based on all columns."""
-        # filter_duplicates = True
-        if pk_columns in ["all", "ALL", "a", "A"]:
-            pk_columns = df.columns.to_list()
-        if pk_columns is not [] and pk_columns is not None:
-            ref_df = self.query_data_from_table(table_name)
-            df_filtered = self._filter_duplicates(
-                target_df=df, reference_df=ref_df, pk_columns=pk_columns
-            )
-        else:
-            df_filtered = df
+    def insert_data_to_table(self, table_name, df: pd.DataFrame) -> pd.DataFrame:
+        """Insert data from a pandas DataFrame"""
+        pk_columns = self.get_primary_key_columns(table_name)
+        ref_df = self.query_data_from_table(table_name)
+        df_filtered = self._filter_duplicates(
+            target_df=df, reference_df=ref_df, pk_columns=pk_columns
+        )
         # print(df_filtered)
         if not df_filtered.empty:
             df_filtered.to_sql(table_name, self.conn, if_exists="append", index=False)
@@ -217,6 +215,50 @@ class EnergyDataHandler:
 
             """Insert data from a pandas DataFrame."""
         return df_filtered
+
+    def get_primary_key_columns(self, table_name):
+        """Retrieve the list of primary key columns for a given table."""
+        query = f"PRAGMA table_info({table_name})"
+        self.cursor.execute(query)
+        columns = []
+        for row in self.cursor.fetchall():
+            # print(f"{row = }")
+            # Column info: (cid, name, type, notnull, dflt_value, pk)
+            if row[5] > 0:  # pk value is > 0 if the column is part of the primary key
+                columns.append(row[1])
+        return columns
+
+    # def insert_data_to_table(self, table_name, df: pd.DataFrame) -> pd.DataFrame:
+    #     """Insert data from a pandas DataFrame into the specified table without duplicating primary key entries."""
+    #     # Automatically determine primary key columns
+    #     primary_key_cols = self.get_primary_key_columns(table_name)
+
+    #     print(f"{primary_key_cols = }")
+
+    #     # Fetch existing primary key values from the database
+    #     placeholders = ", ".join("?" for _ in primary_key_cols)
+    #     sql_query = f"SELECT {', '.join(primary_key_cols)} FROM {table_name}"
+    #     self.cursor.execute(sql_query)
+    #     existing_keys = {tuple(row) for row in self.cursor.fetchall()}
+
+    #     # Filter the DataFrame to exclude rows with keys that already exist in the database
+    #     mask = df.apply(
+    #         lambda row: tuple(row[col] for col in primary_key_cols)
+    #         not in existing_keys,
+    #         axis=1,
+    #     )
+    #     df_filtered = df[mask]
+
+    #     print(f"{df_filtered = }")
+
+    #     # Insert new records
+    #     if not df_filtered.empty:
+    #         df_filtered.to_sql(table_name, self.conn, if_exists="append", index=False)
+    #         print(f"Data inserted successfully: {len(df_filtered)} records added.")
+    #     else:
+    #         print("No new records to insert; all records are duplicates.")
+
+    #     return df_filtered
 
     def query_data_from_table(self, table_name) -> pd.DataFrame:
         """Query all data from the table (for verification)."""
@@ -451,21 +493,13 @@ def main():
         ("rollingPowerAvg", "REAL"),
         ("sessionID", "INTEGER"),
     ]
+    pks = ["stationTime", "sessionID"]
     # db_handler.remove_table(table_name)
-    db_handler.create_table(table_name, table_schema)
+    db_handler.create_table(table_name, table_schema, pks)
     # Insert data
     results = db_handler.insert_data_to_table(
         table_name,
         df,
-        # pk_columns=["stationTime", "sessionID"],
-        # pk_columns=[
-        #     "stationTime",
-        #     "sessionID",
-        #     "peakPower",
-        #     "rollingPowerAvg",
-        #     "sessionID",
-        # ],
-        pk_columns="a",
     )
 
     # # Query and print the data
@@ -531,13 +565,11 @@ def main2():
         ("paymentTerminalInfo", "TEXT"),
     ]
     # db_handler.remove_table(table_name)
-    db_handler.create_table(table_name, table_schema)
+    db_handler.create_table(table_name, table_schema, ["sessionID"])
     # Insert data
     results = db_handler.insert_data_to_table(
         table_name,
         pd.DataFrame(res),
-        pk_columns=["sessionID"],
-        # filter_duplicates=False
     )
 
     # # # Query and print the data
@@ -577,20 +609,11 @@ def main3():
         ("sessionID", "INTEGER"),
     ]
     # db_handler.remove_table(table_name)
-    db_handler.create_table(table_name, table_schema)
+    db_handler.create_table(table_name, table_schema, ["stationTime", "sessionID"])
     # Insert data
     results = db_handler.insert_data_to_table(
         table_name,
         df,
-        # pk_columns=["stationTime", "sessionID"],
-        # pk_columns=[
-        #     "stationTime",
-        #     "sessionID",
-        #     "peakPower",
-        #     "rollingPowerAvg",
-        #     "sessionID",
-        # ],
-        pk_columns="a",
     )
 
     # # Query and print the data
@@ -606,6 +629,6 @@ def main3():
 if __name__ == "__main__":
     # Entry point for script
     try:
-        sys.exit(main3())
+        sys.exit(main2())
     except KeyboardInterrupt:
         pass
