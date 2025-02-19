@@ -40,3 +40,5 @@ rabbitmq-server.download.tar.xz
 *ecobee_*.json
 .env*
 dist/
+
+*.db
