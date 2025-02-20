@@ -1,15 +1,36 @@
 import functools
+import logging
 import os
 import re
 import sqlite3
 import sys
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 import pandas as pd
 import zeep
 from zeep import Settings
 from zeep.helpers import serialize_object
 from zeep.wsse.username import UsernameToken
+
+_log = logging.getLogger(__name__)
+_log.setLevel(logging.DEBUG)
+
+# Create a file handler and set its level to DEBUG
+file_handler = logging.FileHandler("chargepoint_api.log")
+file_handler.setLevel(logging.DEBUG)
+
+# Create a stream handler and set its level to INFO
+stream_handler = logging.StreamHandler()
+stream_handler.setLevel(logging.INFO)
+
+# Create a formatter and add it to the handlers
+formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+file_handler.setFormatter(formatter)
+stream_handler.setFormatter(formatter)
+
+# Add the handlers to the logger
+_log.addHandler(file_handler)
+_log.addHandler(stream_handler)
 
 
 def paginated_api_call(
@@ -37,12 +58,8 @@ def paginated_api_call(
 
                 if response["responseCode"] != "100":
                     # raise Exception(f"API error with response: {response}")
-                    print(f"API error with response: {response}.")
+                    _log.error(f"API error with response: {response}.")
                     return None
-                # try:
-                #     assert response["responseCode"] == "100"
-                # except Exception as e:
-                #     print(f"API error with response: {response}. {e = }")
 
                 response = serialize_object(response)
                 # Process the response data
@@ -51,9 +68,6 @@ def paginated_api_call(
 
                 # Check if more data is available
                 more_flag = response.get(more_flag_key, "NotExist") == 1
-                # print(
-                #     f"========{more_flag = }, {response.get(more_flag_key, 'NotExist') = }"
-                # )
                 if more_flag:
                     start_record += len(data)
 
@@ -93,8 +107,7 @@ def parse_time_duration(prior_to):
         return (value, unit)
     else:
         # Return None or raise an error if the input is invalid
-        print("Invalid input. Valid examples include '1h', '4.5h', '34d'.")
-        return None
+        raise ValueError("Invalid input. Valid examples include '1h', '4.5h', '34d'.")
 
 
 def get_past_timestamp(prior_to):
@@ -112,8 +125,8 @@ def get_past_timestamp(prior_to):
         ValueError: If an invalid unit is provided. Only 'h', 'd', 'w' are accepted.
 
     Example Usage:
-        print(get_past_timestamp("2h"))  # timestamp 2 hours ago
-        print(get_past_timestamp("5d"))  # timestamp 5 days ago
+        get_past_timestamp("2h")  # timestamp 2 hours ago
+        get_past_timestamp("5d")  # timestamp 5 days ago
     """
     amount, unit = parse_time_duration(prior_to)
 
@@ -139,11 +152,10 @@ class EnergyDataHandler:
         """Create and return a database connection."""
         try:
             conn = sqlite3.connect(self.db_path)
-            print(f"SQLite Database connected successfully at {self.db_path}")
+            _log.info(f"SQLite Database connected successfully at {self.db_path}")
             return conn
         except sqlite3.Error as e:
-            print(f"Error connecting to database: {e}")
-            return None
+            raise sqlite3.Error(f"Error connecting to database: {e}")
 
     def create_table(self, table_name, schema, primary_keys):
         """
@@ -180,12 +192,11 @@ class EnergyDataHandler:
                 {primary_keys_sql}
             )
             """
-            # print(f"{query = }")
             self.conn.execute(query)
             self.conn.commit()
-            print("Table created or verified successfully")
+            _log.info("Table created or verified successfully")
         except sqlite3.Error as e:
-            print(f"Error creating table: {e}")
+            raise sqlite3.Error(f"Error creating table: {e}")
 
     @staticmethod
     def _filter_duplicates(
@@ -218,12 +229,11 @@ class EnergyDataHandler:
         df_filtered = self._filter_duplicates(
             target_df=df, reference_df=ref_df, pk_columns=pk_columns
         )
-        # print(df_filtered)
         if not df_filtered.empty:
             df_filtered.to_sql(table_name, self.conn, if_exists="append", index=False)
-            print(f"Data inserted successfully: {len(df_filtered)} records added.")
+            _log.info(f"Data inserted successfully: {len(df_filtered)} records added.")
         else:
-            print("No new records to insert; all records are duplicates.")
+            _log.warning("No new records to insert; all records are duplicates.")
 
             """Insert data from a pandas DataFrame."""
         return df_filtered
@@ -234,43 +244,10 @@ class EnergyDataHandler:
         self.cursor.execute(query)
         columns = []
         for row in self.cursor.fetchall():
-            # print(f"{row = }")
             # Column info: (cid, name, type, notnull, dflt_value, pk)
             if row[5] > 0:  # pk value is > 0 if the column is part of the primary key
                 columns.append(row[1])
         return columns
-
-    # def insert_data_to_table(self, table_name, df: pd.DataFrame) -> pd.DataFrame:
-    #     """Insert data from a pandas DataFrame into the specified table without duplicating primary key entries."""
-    #     # Automatically determine primary key columns
-    #     primary_key_cols = self.get_primary_key_columns(table_name)
-
-    #     print(f"{primary_key_cols = }")
-
-    #     # Fetch existing primary key values from the database
-    #     placeholders = ", ".join("?" for _ in primary_key_cols)
-    #     sql_query = f"SELECT {', '.join(primary_key_cols)} FROM {table_name}"
-    #     self.cursor.execute(sql_query)
-    #     existing_keys = {tuple(row) for row in self.cursor.fetchall()}
-
-    #     # Filter the DataFrame to exclude rows with keys that already exist in the database
-    #     mask = df.apply(
-    #         lambda row: tuple(row[col] for col in primary_key_cols)
-    #         not in existing_keys,
-    #         axis=1,
-    #     )
-    #     df_filtered = df[mask]
-
-    #     print(f"{df_filtered = }")
-
-    #     # Insert new records
-    #     if not df_filtered.empty:
-    #         df_filtered.to_sql(table_name, self.conn, if_exists="append", index=False)
-    #         print(f"Data inserted successfully: {len(df_filtered)} records added.")
-    #     else:
-    #         print("No new records to insert; all records are duplicates.")
-
-    #     return df_filtered
 
     def query_data_from_table(self, table_name) -> pd.DataFrame:
         """Query all data from the table (for verification)."""
@@ -280,9 +257,9 @@ class EnergyDataHandler:
         """Close the database connection."""
         try:
             self.conn.close()
-            print("Database connection closed")
+            _log.info("Database connection closed")
         except sqlite3.Error as e:
-            print(f"Error closing the database connection: {e}")
+            raise sqlite3.Error(f"Error closing the database connection: {e}")
 
     def remove_table(self, table_name):
         """
@@ -296,13 +273,13 @@ class EnergyDataHandler:
             query = f"DROP TABLE IF EXISTS {table_name}"
             self.conn.execute(query)
             self.conn.commit()
-            print(f"Table {table_name} has been removed successfully.")
+            _log.info(f"Table {table_name} has been removed successfully.")
         except sqlite3.Error as e:
-            print(f"Error removing table {table_name}: {e}")
+            raise sqlite3.Error(f"Error removing table {table_name}: {e}")
 
 
 class ChargePointApi:
-    pass
+    # Note: this is the template for batching API calls
 
     def __init__(self, username, password) -> None:
         self.username = username
@@ -315,14 +292,13 @@ class ChargePointApi:
             settings=settins,
         )
 
-        # mechanism to smart poll all history
-        # self.is_period_auto_defined = is_period_auto_defined
-        self._polled_all_history = False
-
 
 class Get15minChargingSessionDataAPI(ChargePointApi):
     def __init__(self, username, password):
         super().__init__(username, password)
+        self._get_charging_session_data_api = GetChargingSessionDataAPI(
+            self.username, self.password
+        )
 
     def _get15minChargingSessionData(
         self, sessionID: int, energyConsumedInterval: bool = False
@@ -342,14 +318,13 @@ class Get15minChargingSessionDataAPI(ChargePointApi):
         fifteen_min_data_collection = []
         for i, session_id in enumerate(session_ids):
             if i % 10 == 0:
-                print(
+                _log.info(
                     f"Processing session {i + 1} out of {len(session_ids)}. Current {session_id =}"
                 )
             single_session_15min_data: dict = self._get15minChargingSessionData(
                 sessionID=session_id,
                 energyConsumedInterval=isEnergyConsumedIntervalDelta,
             )
-            # print(f"{i =} out of {len(session_ids)}, {session_id = }")
             if single_session_15min_data["responseCode"] == "100":
                 single_session_15min_data_serial = serialize_object(
                     single_session_15min_data
@@ -363,12 +338,14 @@ class Get15minChargingSessionDataAPI(ChargePointApi):
                     elif isinstance(fifteen_data, dict):
                         fifteen_data = [fifteen_data]
                     else:
-                        raise Exception(f"{fifteen_data = } is not a regular data")
+                        raise ValueError(f"{fifteen_data = } is not a regular data")
                     for d in fifteen_data:
                         d["sessionID"] = session_id
                     fifteen_min_data_collection += fifteen_data
-                except Exception as e:
-                    print(f"{e = }, {session_id = }")
+                except ValueError as e:
+                    _log.warning(
+                        f"Warning: encoutered and skipped {e = }, {session_id = }"
+                    )
         return fifteen_min_data_collection
 
     def get15minCharginSessionDataAPI(
@@ -392,41 +369,47 @@ class Get15minChargingSessionDataAPI(ChargePointApi):
         activeSessionsOnly=None,
         portNumber: str = None,
         start_period_ago: str = None,
-        is_period_auto_defined: bool = True,
+        is_period_auto_defined: bool = False,
     ) -> list[dict]:
-        session_data_res = GetChargingSessionDataAPI(
-            self.username, self.password
-        ).getChargingSessionDataAPI(
-            stationID=stationID,
-            sessionID=sessionID,
-            userID=userID,
-            stationName=stationName,
-            Address=Address,
-            City=City,
-            State=State,
-            Country=Country,
-            postalCode=postalCode,
-            Proximity=Proximity,
-            proximityUnit=proximityUnit,
-            fromTimeStamp=fromTimeStamp,
-            toTimeStamp=toTimeStamp,
-            startRecord=startRecord,
-            Geo=Geo,
-            stationIDs=stationIDs,
-            activeSessionsOnly=activeSessionsOnly,
-            portNumber=portNumber,
-            start_period_ago=start_period_ago,
-            is_period_auto_defined=is_period_auto_defined,
+        session_data_res = (
+            self._get_charging_session_data_api.getChargingSessionDataAPI(
+                stationID=stationID,
+                sessionID=sessionID,
+                userID=userID,
+                stationName=stationName,
+                Address=Address,
+                City=City,
+                # State=State,
+                Country=Country,
+                postalCode=postalCode,
+                Proximity=Proximity,
+                proximityUnit=proximityUnit,
+                fromTimeStamp=fromTimeStamp,
+                toTimeStamp=toTimeStamp,
+                startRecord=startRecord,
+                Geo=Geo,
+                stationIDs=stationIDs,
+                activeSessionsOnly=activeSessionsOnly,
+                portNumber=portNumber,
+                start_period_ago=start_period_ago,
+                is_period_auto_defined=is_period_auto_defined,
+            )
         )
+        if session_data_res == []:
+            return []
         df_session_data = pd.DataFrame(session_data_res)
         session_ids = df_session_data["sessionID"].to_list()
-        # print(f"{session_ids = }")
         return self.get15minCharginSessionDataCollection(session_ids)
 
 
 class GetChargingSessionDataAPI(ChargePointApi):
     def __init__(self, username, password):
         super().__init__(username, password)
+        # Note: mechanism to poll historical data: first time, get all data,
+        # then get the later later data defined by start_period_ago.
+        # flag to check if all historical data has been polled
+        # three states: None, False, True
+        self._has_tried_to_poll_all_history: None | bool = None
 
     # Wrap the actual data-fetching function
     @paginated_api_call(
@@ -441,7 +424,6 @@ class GetChargingSessionDataAPI(ChargePointApi):
             # Create an instance of this type
             station_ids = station_id_list_type(stationID=kwargs["stationIDs"])
             kwargs["stationIDs"] = station_ids
-        # print(f"{kwargs = }")
         return self.client.service.getChargingSessionData(kwargs)
 
     def getChargingSessionDataAPI(
@@ -465,11 +447,17 @@ class GetChargingSessionDataAPI(ChargePointApi):
         activeSessionsOnly=None,
         portNumber: str = None,
         start_period_ago: str = None,
-        is_period_auto_defined: bool = True,
+        is_period_auto_defined: bool = False,
     ) -> list[dict]:
         """
         Example fromTimeStamp: 2024-12-01T00:00:00, 2024-12-01, "2024/12/01"
         """
+        # Note: mechanism to poll historical data: first time, get all data,
+        # then get the later later data defined by start_period_ago
+        # Note: keep the code workflow as it is, for readability
+        if is_period_auto_defined and self._has_tried_to_poll_all_history != True:
+            start_period_ago = None
+        # print(f"========{self._has_tried_to_poll_all_history}")
         if fromTimeStamp is not None:
             fromTimeStamp = pd.to_datetime(fromTimeStamp).strftime("%Y-%m-%dT%H:%M:%S")
         if toTimeStamp is not None:
@@ -477,12 +465,13 @@ class GetChargingSessionDataAPI(ChargePointApi):
         if (
             fromTimeStamp is not None or toTimeStamp is not None
         ) and start_period_ago is not None:
-            print(f"Warning: Overwrite {fromTimeStamp = } with {start_period_ago = }")
+            _log.warning(
+                f"Warning: Overwrite {fromTimeStamp = } with {start_period_ago = }"
+            )
         if start_period_ago is not None:
             fromTimeStamp = get_past_timestamp(start_period_ago).strftime(
                 "%Y-%m-%dT%H:%M:%S"
             )
-        self._is_period_auto_defined = is_period_auto_defined
 
         # Can have values: M (Miles), N (Nautical miles), K (Kilometer), F (Feet), I (Inches)
         if proximityUnit is not None and proximityUnit not in ["M", "N", "K", "F", "I"]:
@@ -514,175 +503,73 @@ class GetChargingSessionDataAPI(ChargePointApi):
             session_data_res = [
                 d for d in session_data_res if d["portNumber"] == portNumber
             ]
+        if is_period_auto_defined:
+            self._has_tried_to_poll_all_history = True  # set the flag
         return session_data_res
 
 
-def main():
-    charge_point = Get15minChargingSessionDataAPI(username, password)
-    # resonse = charge_point._get15minChargingSessionData(sessionID=101542479) # 101268659
-    resonse = charge_point.get15minCharginSessionDataCollection(
-        session_ids=[101542479, 101268659, 100412719]
-    )  # 101268659
-    # print(resonse)
-    df = pd.DataFrame(resonse)
-    # print(df)
+class GetLoadAPI(ChargePointApi):
+    """
+    Represents a class for interacting with the GetLoad API of the ChargePoint API service.
 
-    # Get the directory of the current script
-    script_directory = os.path.dirname(os.path.abspath(__file__))
-    # print("Script is running in:", script_directory)
-    db_path = os.path.join(script_directory, "chargePoint_testing.db")
-    # Initialize the handler
-    db_handler = EnergyDataHandler(db_path)
-    table_name = "get15minCharginSessionData"
-    table_schema = [
-        ("stationTime", "TEXT"),
-        ("energyConsumed", "REAL"),
-        ("peakPower", "REAL"),
-        ("rollingPowerAvg", "REAL"),
-        ("sessionID", "INTEGER"),
-    ]
-    pks = ["stationTime", "sessionID"]
-    # db_handler.remove_table(table_name)
-    db_handler.create_table(table_name, table_schema, pks)
-    # Insert data
-    results = db_handler.insert_data_to_table(
-        table_name,
-        df,
-    )
+    Args:
+        username (str): The username for authentication.
+        password (str): The password for authentication.
+    """
 
-    # # Query and print the data
-    # results = db_handler.query_data_from_table(table_name)
-    print(results)
-    # for row in results:
-    #     print(row)
+    def __init__(self, username, password):
+        super().__init__(username, password)
 
-    # Close the database connection
-    db_handler.close()
+    def getLoadAPI(self, stationID=None, sgID=None, sessionID=None):
+        """
+        Retrieves the load information from the ChargePoint API.
 
+        Args:
+            stationID (str, optional): The ID of the station. Defaults to None.
+            sgID (str, optional): The ID of the station group. Defaults to None.
+            sessionID (str, optional): The ID of the session. Defaults to None.
 
-def main2():
-    charge_point = GetChargingSessionDataAPI(username, password)
-    # res = charge_point.getChargingSessionDataAPI(
-    #     # stationID="5:15504761",  # 5:11649381
-    #     fromTimeStamp="2024-12-01",
-    #     # toTimeStamp="2024-12-15"
-    # )
-    res = charge_point.getChargingSessionDataAPI(
-        # stationID="5:15504761",  # 5:11649381
-        fromTimeStamp="2024-12-01",
-        stationIDs=["5:15504761", "5:11649381"],
-        # toTimeStamp="2024-12-15"
-    )
-    print(pd.DataFrame(res).info())
-    # print(pd.DataFrame(res))
+        Returns:
+            dict: The response from the API containing the load information.
+                  Returns None if there is an API error.
+        """
+        # Note: 'Search by either sgID, sessionID or stationID', one and only one of them should be provided.
+        searchQuery = {}
+        if sgID is not None:
+            searchQuery.update({"sgID": sgID})
+        if stationID is not None:
+            searchQuery.update({"stationID": stationID})
+        if sessionID is not None:
+            searchQuery.update({"sessionID": sessionID})
 
-    # Get the directory of the current script
-    script_directory = os.path.dirname(os.path.abspath(__file__))
-    # print("Script is running in:", script_directory)
-    db_path = os.path.join(script_directory, "chargePoint_testing.db")
-    # Initialize the handler
-    db_handler = EnergyDataHandler(db_path)
-    table_name = "getChargingSessionData"
-    table_schema = [
-        ("stationID", "TEXT"),
-        ("stationName", "TEXT"),
-        ("portNumber", "TEXT"),
-        ("Address", "TEXT"),
-        ("City", "TEXT"),
-        ("State", "TEXT"),
-        ("Country", "TEXT"),
-        ("postalCode", "TEXT"),
-        (
-            "sessionID",
-            "INTEGER",
-        ),  # ("sessionID", "INTEGER PRIMARY KEY"),  # Assuming sessionID is unique
-        ("Energy", "REAL"),
-        ("startTime", "TEXT"),  # Storing as ISO8601 string
-        ("endTime", "TEXT"),  # Storing as ISO8601 string
-        ("totalChargingDuration", "TEXT"),  # Could be INTEGER if stored as seconds
-        ("totalSessionDuration", "TEXT"),  # Could be INTEGER if stored as seconds
-        ("userID", "TEXT"),
-        ("startBatteryPercentage", "REAL"),
-        ("stopBatteryPercentage", "REAL"),
-        ("recordNumber", "INTEGER"),
-        ("credentialID", "TEXT"),
-        ("endedBy", "TEXT"),
-        ("vehicleMake", "TEXT"),
-        ("vehicleModel", "TEXT"),
-        ("vehicleModelYear", "INTEGER"),
-        ("vehicleType", "TEXT"),
-        ("vehiclePortMAC", "TEXT"),
-        ("driverOptedOut", "INTEGER"),  # Assuming this is a boolean flag (0 or 1)
-        ("driverOptOutTimestamp", "TEXT"),  # Storing as ISO8601 string
-        ("paymentTerminalInfo", "TEXT"),
-    ]
-    # db_handler.remove_table(table_name)
-    db_handler.create_table(table_name, table_schema, ["sessionID"])
-    # Insert data
-    results = db_handler.insert_data_to_table(
-        table_name,
-        pd.DataFrame(res),
-    )
+        response = self.client.service.getLoad(searchQuery)
 
-    # # # Query and print the data
-    # # results = db_handler.query_data_from_table(table_name)
-    # print(results)
-    # for row in results:
-    #     print(row)
+        if response["responseCode"] != "100":
+            # raise Exception(f"API error with response: {response}")
+            _log.warning(f"Warning: API error with response: {response}.")
+            return None
 
-    # Close the database connection
-    db_handler.close()
+        serialized_res = serialize_object(response)
 
-
-def main3():
-    charge_point = Get15minChargingSessionDataAPI(username, password)
-    # resonse = charge_point._get15minChargingSessionData(sessionID=101542479) # 101268659
-    resonse = charge_point.get15minCharginSessionDataAPI(
-        stationID="5:15504761", portNumber="2"
-    )  # 101268659
-    # print(resonse)
-    df = pd.DataFrame(resonse)
-    # print(df)
-
-    # Get the directory of the current script
-    script_directory = os.path.dirname(os.path.abspath(__file__))
-    # print("Script is running in:", script_directory)
-    db_path = os.path.join(script_directory, "chargePoint_testing.db")
-    # Initialize the handler
-    db_handler = EnergyDataHandler(db_path)
-    table_name = "get15minCharginSessionData"
-    table_schema = [
-        ("stationTime", "TEXT"),
-        ("energyConsumed", "REAL"),
-        ("peakPower", "REAL"),
-        ("rollingPowerAvg", "REAL"),
-        ("sessionID", "INTEGER"),
-    ]
-    # db_handler.remove_table(table_name)
-    db_handler.create_table(table_name, table_schema, ["stationTime", "sessionID"])
-    # Insert data
-    results = db_handler.insert_data_to_table(
-        table_name,
-        df,
-    )
-
-    # # Query and print the data
-    # results = db_handler.query_data_from_table(table_name)
-    print(results)
-    # for row in results:
-    #     print(row)
-
-    # Close the database connection
-    db_handler.close()
-
-
-username = os.getenv(
-    "CHARGEPOINT_USERNAME"
-)  # "9c2fc57f048fd5c2f740dcf8e0a6f69c677c424289bda1736196674"
-password = os.getenv("CHARGEPOINT_PASSWORD")  # "d67f1b3e02ff57fb6d90fc8a770db00b"
-if __name__ == "__main__":
-    # Entry point for script
-    try:
-        sys.exit(main2())
-    except KeyboardInterrupt:
-        pass
+        # flattern the nested json data
+        df = pd.json_normalize(
+            serialized_res["stationData"],
+            record_path="Port",
+            meta=["stationID", "stationName", "Address", "stationLoad"],
+        )
+        # filter out the sessionID = 0 (invalid sessionID)
+        df = df[df["sessionID"] != 0]
+        # add "queryTime" column
+        df["queryTimeUTC"] = pd.to_datetime(datetime.now(UTC))
+        # parse xml type to general python type (i.e., decimal.Decimal to float)
+        for col in [
+            "portLoad",
+            "allowedLoad",
+            "percentShed",
+            "lastBatteryPercent",
+            "stationLoad",
+        ]:
+            # df[col] = df[col].apply(lambda x: float(x) if x is not None else None)
+            df[col] = df[col].astype(float)
+        # convert the dataframe to a list of dictionaries
+        return df.to_dict(orient="records")

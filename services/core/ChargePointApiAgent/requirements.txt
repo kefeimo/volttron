@@ -1,0 +1,8 @@
+# Recommended Python version: 3.10
+
+# zeep==4.0.0  # As of my last training data, this version was compatible with Python 3.10
+# pandas==1.3.5  # Ensure this version is compatible and meets your requirements
+
+zeep
+pandas
+requests

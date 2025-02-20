@@ -1,0 +1,42 @@
+2025-02-20 14:56:17,693 - chargepoint_api_service - ERROR - API error with response: {
+    'responseCode': '136',
+    'responseText': 'No charging session data found for given criteria.',
+    'ChargingSessionData': [],
+    'MoreFlag': None
+}.
+2025-02-20 15:00:43,240 - chargepoint_api_service - INFO - Processing session 1 out of 120. Current session_id =80558889
+2025-02-20 15:00:46,234 - chargepoint_api_service - INFO - Processing session 11 out of 120. Current session_id =87155829
+2025-02-20 15:00:49,077 - chargepoint_api_service - INFO - Processing session 21 out of 120. Current session_id =95107019
+2025-02-20 15:00:51,614 - chargepoint_api_service - INFO - Processing session 31 out of 120. Current session_id =96444709
+2025-02-20 15:00:54,684 - chargepoint_api_service - INFO - Processing session 41 out of 120. Current session_id =97227559
+2025-02-20 15:00:57,456 - chargepoint_api_service - INFO - Processing session 51 out of 120. Current session_id =97619069
+2025-02-20 15:01:00,423 - chargepoint_api_service - INFO - Processing session 61 out of 120. Current session_id =97894639
+2025-02-20 15:01:03,328 - chargepoint_api_service - INFO - Processing session 71 out of 120. Current session_id =98373629
+2025-02-20 15:01:06,041 - chargepoint_api_service - INFO - Processing session 81 out of 120. Current session_id =98780559
+2025-02-20 15:01:08,985 - chargepoint_api_service - INFO - Processing session 91 out of 120. Current session_id =99432669
+2025-02-20 15:01:11,794 - chargepoint_api_service - INFO - Processing session 101 out of 120. Current session_id =100396079
+2025-02-20 15:01:14,580 - chargepoint_api_service - INFO - Processing session 111 out of 120. Current session_id =102318399
+2025-02-20 15:01:18,232 - chargepoint_api_service - INFO - Processing session 1 out of 2. Current session_id =102907329
+2025-02-20 15:01:19,016 - chargepoint_api_service - INFO - Processing session 1 out of 2. Current session_id =102907329
+2025-02-20 15:01:34,454 - chargepoint_api_service - INFO - Processing session 1 out of 3. Current session_id =101542479
+2025-02-20 15:01:35,345 - chargepoint_api_service - INFO - SQLite Database connected successfully at /home/kefei/project/ires-rtac-deployment/ChargePointApiAgent/chargepoint_api_agent/chargePoint_testing.db
+2025-02-20 15:01:35,352 - chargepoint_api_service - INFO - Table created or verified successfully
+2025-02-20 15:01:35,369 - chargepoint_api_service - INFO - Data inserted successfully: 445 records added.
+2025-02-20 15:01:35,374 - chargepoint_api_service - INFO - Database connection closed
+2025-02-20 15:01:44,942 - chargepoint_api_service - INFO - SQLite Database connected successfully at /home/kefei/project/ires-rtac-deployment/ChargePointApiAgent/chargepoint_api_agent/chargePoint_testing.db
+2025-02-20 15:01:44,946 - chargepoint_api_service - INFO - Table created or verified successfully
+2025-02-20 15:01:44,965 - chargepoint_api_service - INFO - Data inserted successfully: 93 records added.
+2025-02-20 15:01:44,965 - chargepoint_api_service - INFO - Database connection closed
+2025-02-20 15:02:08,329 - chargepoint_api_service - INFO - Processing session 1 out of 49. Current session_id =80558889
+2025-02-20 15:02:10,769 - chargepoint_api_service - INFO - Processing session 11 out of 49. Current session_id =88681439
+2025-02-20 15:02:13,437 - chargepoint_api_service - INFO - Processing session 21 out of 49. Current session_id =95696789
+2025-02-20 15:02:16,073 - chargepoint_api_service - INFO - Processing session 31 out of 49. Current session_id =96805949
+2025-02-20 15:02:18,882 - chargepoint_api_service - INFO - Processing session 41 out of 49. Current session_id =97376889
+2025-02-20 15:02:21,130 - chargepoint_api_service - INFO - SQLite Database connected successfully at /home/kefei/project/ires-rtac-deployment/ChargePointApiAgent/chargepoint_api_agent/chargePoint_testing.db
+2025-02-20 15:02:21,130 - chargepoint_api_service - INFO - Table created or verified successfully
+2025-02-20 15:02:21,177 - chargepoint_api_service - INFO - Data inserted successfully: 2549 records added.
+2025-02-20 15:02:21,182 - chargepoint_api_service - INFO - Database connection closed
+2025-02-20 15:04:07,347 - chargepoint_api_service - INFO - SQLite Database connected successfully at /home/kefei/project/ires-rtac-deployment/ChargePointApiAgent/chargepoint_api_agent/chargePoint_testing.db
+2025-02-20 15:04:07,349 - chargepoint_api_service - INFO - Table created or verified successfully
+2025-02-20 15:04:07,361 - chargepoint_api_service - INFO - Data inserted successfully: 1 records added.
+2025-02-20 15:04:07,369 - chargepoint_api_service - INFO - Database connection closed

@@ -3,10 +3,10 @@ import datetime
 import os
 
 import pandas as pd
-
-from services.core.ChargePointApiAgent.chargepoint_api_agent.chargepoint_api_service import (
+from chargepoint_api_service import (
     Get15minChargingSessionDataAPI,
     GetChargingSessionDataAPI,
+    GetLoadAPI,
 )
 
 
@@ -48,11 +48,11 @@ def main():
         },
         "portNumber": {"help": "Port number"},
         "start_period_ago": {"help": "Time period to start data collection from"},
-        "is_period_auto_defined": {
-            # "type": bool,
-            "action": "store_true",
-            "help": "Whether the time period is automatically defined",
-        },
+        # "is_period_auto_defined": {
+        #     # "type": bool,
+        #     "action": "store_true",
+        #     "help": "Whether the time period is automatically defined",
+        # },
     }
     extra_common_args = {
         "to_csv": {
@@ -80,6 +80,17 @@ def main():
         parser_charging.add_argument(f"--{arg}", **options)
     # parser_charging.set_defaults(func=GetChargingSessionDataAPI)
 
+    # Subcommand for getLoad
+    parser_getLoad = subparsers.add_parser("get_load", help="Get load data")
+    parser_getLoad.add_argument("--stationID", type=str, help="Station ID")
+    parser_getLoad.add_argument("--sgID", type=str, help="Station Group ID")
+    parser_getLoad.add_argument("--sessionID", type=int, help="Session ID")
+    parser_getLoad.add_argument(
+        "--to_csv",
+        action="store_true",
+        help="Whether to save the data to a CSV file",
+    )
+
     args = parser.parse_args()
 
     # Initialize the correct API based on the subcommand
@@ -89,6 +100,8 @@ def main():
         ).get15minCharginSessionDataAPI
     elif args.subcommand == "get_charging_session":
         method = GetChargingSessionDataAPI(username, password).getChargingSessionDataAPI
+    elif args.subcommand == "get_load":
+        method = GetLoadAPI(username, password).getLoadAPI
 
     # Extract remaining arguments to pass to the function
     kwargs = {
@@ -102,7 +115,9 @@ def main():
     response = method(**kwargs)
     df_response = pd.DataFrame(response)
     if args.to_csv:
-        csv_filename = f"/tmp/{args.subcommand}-{datetime.datetime.now()}.csv"
+        timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        subcommand = args.subcommand.replace(" ", "_")
+        csv_filename = f"/tmp/{subcommand}-{timestamp}.csv"
         df_response.to_csv(csv_filename)
         print(f"Saved data to {csv_filename}")
     else:
