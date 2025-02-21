@@ -4,7 +4,7 @@
     "publish_interval": 300,
     "subcommand": "get_load_v2",
     "charge_point_entry_kwargs": {
-        "stationID": [
+        "stationIDs": [
             "5:16002759",
             "5:15504761",
             "5:14308501",
