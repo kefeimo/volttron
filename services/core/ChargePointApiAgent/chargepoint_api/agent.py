@@ -107,7 +107,11 @@ class ChargePointAPIAgent(Agent):
         kwargs = self.charge_point_entry_kwargs
         api_response: list[dict] = method(**kwargs)
 
-        _log.info(f"API for {subcommand = }, {api_response = }")
+        if not api_response:
+            _log.warning(f"No data received for {subcommand = }")
+            return
+        else:
+            _log.info(f"API for {subcommand = }, {api_response = }")
 
         # populate to db
         if subcommand == "get_load" or subcommand == "get_load_v2":
