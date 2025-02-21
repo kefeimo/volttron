@@ -7,5 +7,6 @@
         "stationID": "5:15504761",
         "sgID": null,
         "sessionID": null
-    }
+    },
+    "db_path": null
 }

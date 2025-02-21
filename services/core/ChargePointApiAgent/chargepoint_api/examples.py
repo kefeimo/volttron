@@ -4,7 +4,8 @@ import os
 import sys
 
 import pandas as pd
-from chargepoint_api_service import (
+
+from services.core.ChargePointApiAgent.chargepoint_api.chargepoint_api_service import (
     EnergyDataHandler,
     Get15minChargingSessionDataAPI,
     GetChargingSessionDataAPI,
@@ -256,6 +257,52 @@ def main5b():
         print(f"{i = }, {len(df) = }")
 
 
+def main6():
+    # verify is_period_auto_defined
+    charge_point = GetLoadAPI(username, password)
+    # resonse = charge_point._get15minChargingSessionData(sessionID=101542479) # 101268659
+
+    resonse = charge_point.getLoadAPI_v2(
+        stationIDs=["5:15504761", "5:16002759"]
+        + [
+            "5:16002759",
+            "5:15504761",
+            "5:14308501",
+            "5:14285201",
+            "5:14285181",
+            "5:14129071",
+            "5:13933801",
+            "5:13864601",
+            "5:13791221",
+            "5:13097851",
+            "5:13097841",
+            "5:13097831",
+            "5:13090601",
+            "5:13090581",
+            "5:13090571",
+            "5:13090551",
+            "5:13090541",
+            "5:13090531",
+            "5:13090511",
+            "5:13090471",
+            "5:13059121",
+            "5:11649421",
+            "5:11649381",
+            "5:11649291",
+            "5:176401",
+            "5:176073",
+            "5:175989",
+            "5:125701",
+            "5:117867",
+            "5:117257",
+        ]
+        # portNumber="2",
+    )  # 101268659
+    print(resonse)
+    # df = pd.DataFrame(resonse)
+    # print(f"{i = }, {len(df) = }")
+
+
 username = os.getenv(
     "CHARGEPOINT_USERNAME"
 )  # "9c2fc57f048fd5c2f740dcf8e0a6f69c677c424289bda1736196674"
@@ -265,6 +312,6 @@ password = os.getenv("CHARGEPOINT_PASSWORD")  # "d67f1b3e02ff57fb6d90fc8a770db00
 if __name__ == "__main__":
     # Entry point for script
     try:
-        sys.exit(main5b())
+        sys.exit(main6())
     except KeyboardInterrupt:
         pass

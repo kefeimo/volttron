@@ -1,0 +1,6 @@
+2025-02-21 13:27:06,276 - chargepoint_api_service - ERROR - API error with response: {
+    'responseCode': '136',
+    'responseText': 'No charging session data found for given criteria.',
+    'ChargingSessionData': [],
+    'MoreFlag': None
+}.

@@ -3,7 +3,8 @@ import datetime
 import os
 
 import pandas as pd
-from chargepoint_api_service import (
+
+from services.core.ChargePointApiAgent.chargepoint_api.chargepoint_api_service import (
     Get15minChargingSessionDataAPI,
     GetChargingSessionDataAPI,
     GetLoadAPI,

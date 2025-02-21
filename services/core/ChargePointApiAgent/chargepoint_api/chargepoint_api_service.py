@@ -4,7 +4,7 @@ import os
 import re
 import sqlite3
 import sys
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import pandas as pd
 import zeep
@@ -319,7 +319,7 @@ class Get15minChargingSessionDataAPI(ChargePointApi):
         for i, session_id in enumerate(session_ids):
             if i % 10 == 0:
                 _log.info(
-                    f"Processing session {i + 1} out of {len(session_ids)}. Current {session_id =}"
+                    f"Processing session {i + 1} out of {len(session_ids)}. Current {session_id = }"
                 )
             single_session_15min_data: dict = self._get15minChargingSessionData(
                 sessionID=session_id,
@@ -520,6 +520,23 @@ class GetLoadAPI(ChargePointApi):
     def __init__(self, username, password):
         super().__init__(username, password)
 
+    def getLoadAPI_v2(self, stationIDs: list[str]) -> list[dict]:
+        """
+        Retrieves load API data for multiple stations.
+
+        Args:
+            stationIDs (list[dict]): A list of dictionaries representing the station IDs.
+
+        Returns:
+            list[dict]: A list of dictionaries representing the load API data for the specified stations.
+        """
+        responses = []
+        for station_id in stationIDs:
+            response = self.getLoadAPI(stationID=station_id)
+            if response is not None:
+                responses += response
+        return responses
+
     def getLoadAPI(self, stationID=None, sgID=None, sessionID=None):
         """
         Retrieves the load information from the ChargePoint API.
@@ -560,7 +577,9 @@ class GetLoadAPI(ChargePointApi):
         # filter out the sessionID = 0 (invalid sessionID)
         df = df[df["sessionID"] != 0]
         # add "queryTime" column
-        df["queryTimeUTC"] = pd.to_datetime(datetime.now(UTC))
+        df["queryTimeUTC"] = pd.to_datetime(datetime.now(timezone.utc)).strftime(
+            "%Y-%m-%dT%H:%M:%S"
+        )
         # parse xml type to general python type (i.e., decimal.Decimal to float)
         for col in [
             "portLoad",

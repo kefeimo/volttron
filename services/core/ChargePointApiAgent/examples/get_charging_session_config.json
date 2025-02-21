@@ -1,0 +1,30 @@
+{
+    "username": "9c2fc57f048fd5c2f740dcf8e0a6f69c677c424289bda1736196674",
+    "password": "d67f1b3e02ff57fb6d90fc8a770db00b",
+    "publish_interval": 3600,
+    "subcommand": "get_charging_session",
+    "charge_point_entry_kwargs": {
+        "stationID": null,
+        "sessionID": null,
+        "userID": null,
+        "stationName": null,
+        "Address": null,
+        "City": null,
+        "Country": null,
+        "postalCode": null,
+        "Proximity": null,
+        "proximityUnit": null,
+        "fromTimeStamp": null,
+        "toTimeStamp": null,
+        "startRecord": null,
+        "Geo": null,
+        "stationIDs": [
+            "5:15504761"
+        ],
+        "activeSessionsOnly": null,
+        "portNumber": null,
+        "start_period_ago": "1h",
+        "is_period_auto_defined": true
+    },
+    "db_path": null
+}
