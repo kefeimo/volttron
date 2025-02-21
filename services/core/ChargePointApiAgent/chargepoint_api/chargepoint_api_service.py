@@ -578,13 +578,16 @@ class GetLoadAPI(ChargePointApi):
         # filter out the sessionID = 0 (invalid sessionID)
         df = df[df["sessionID"] != 0]
         # add "queryTime" column
-        if get_utc_time_from_api():
-            time_now_utc = get_utc_time_from_api()
+        utc_time_from_api = get_utc_time_from_api()
+        if utc_time_from_api:
+            time_now_utc = utc_time_from_api
         else:
             time_now_utc = datetime.now(
                 timezone.utc
             )  # Note: local clock might be out of sync
-
+        _log.debug(
+            f"{time_now_utc = }, {utc_time_from_api = }, {datetime.now(timezone.utc) = }"
+        )
         df["queryTimeUTC"] = pd.to_datetime(time_now_utc).strftime("%Y-%m-%dT%H:%M:%S")
         # parse xml type to general python type (i.e., decimal.Decimal to float)
         for col in [
