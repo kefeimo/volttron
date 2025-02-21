@@ -7,6 +7,7 @@ import sys
 from datetime import datetime, timedelta, timezone
 
 import pandas as pd
+import requests
 import zeep
 from zeep import Settings
 from zeep.helpers import serialize_object
@@ -577,9 +578,14 @@ class GetLoadAPI(ChargePointApi):
         # filter out the sessionID = 0 (invalid sessionID)
         df = df[df["sessionID"] != 0]
         # add "queryTime" column
-        df["queryTimeUTC"] = pd.to_datetime(datetime.now(timezone.utc)).strftime(
-            "%Y-%m-%dT%H:%M:%S"
-        )
+        if get_utc_time_from_api():
+            time_now_utc = get_utc_time_from_api()
+        else:
+            time_now_utc = datetime.now(
+                timezone.utc
+            )  # Note: local clock might be out of sync
+
+        df["queryTimeUTC"] = pd.to_datetime(time_now_utc).strftime("%Y-%m-%dT%H:%M:%S")
         # parse xml type to general python type (i.e., decimal.Decimal to float)
         for col in [
             "portLoad",
@@ -592,3 +598,22 @@ class GetLoadAPI(ChargePointApi):
             df[col] = df[col].astype(float)
         # convert the dataframe to a list of dictionaries
         return df.to_dict(orient="records")
+
+
+def get_utc_time_from_api() -> str:
+    """
+    # Example usage
+    current_utc_time = get_utc_time_from_api()
+    print("Current UTC Time:", current_utc_time)
+    """
+    url = "http://worldtimeapi.org/api/timezone/Etc/UTC"
+    try:
+        response = requests.get(url)
+        data = response.json()
+        utc_time = data[
+            "datetime"
+        ]  # The datetime key contains the UTC time in ISO 8601 format.
+        return utc_time
+    except Exception as e:
+        print("Failed to get time from API:", e)
+        return None
