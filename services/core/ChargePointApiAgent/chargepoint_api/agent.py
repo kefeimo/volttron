@@ -6,12 +6,19 @@ __docformat__ = "reStructuredText"
 
 import logging
 import os
+import re
 import sys
+from datetime import datetime
 
 import pandas as pd
 
 from volttron.platform.agent import utils
 from volttron.platform.vip.agent import RPC, Agent, Core
+
+try:
+    from volttron.client.messaging import headers as headers_mod
+except ImportError:
+    from volttron.platform.messaging import headers as headers_mod
 
 # # from dnp3_python.dnp3station.outstation import MyOutStation as MyOutStationNew
 # from dnp3_python.dnp3station.outstation_new import MyOutStationNew
@@ -89,31 +96,8 @@ class ChargePointAPIAgent(Agent):
         # Note: callback func evoked periodically
         self.core.periodic(self.publish_interval, self.periodic_recall)
 
-    def periodic_recall(self):
-        # Get subcommand from config and assign method
-        subcommand = self.config.get("subcommand")
-        if subcommand == "get_load":
-            method = self.get_load_api.getLoadAPI
-        elif subcommand == "get_load_v2":
-            method = self.get_load_api.getLoadAPI_v2
-        elif subcommand == "get_15min":
-            method = self.get_15min_api.get15minCharginSessionDataAPI
-        elif subcommand == "get_charging_session":
-            method = self.get_charging_session_api.getChargingSessionDataAPI
-        else:
-            raise ValueError(f"Invalid subcommand: {self.config.get('subcommand')}")
-
-        # Evoke API call based on subcommand
-        kwargs = self.charge_point_entry_kwargs
-        api_response: list[dict] = method(**kwargs)
-
-        if not api_response:
-            _log.warning(f"No data received for {subcommand = }")
-            return
-        else:
-            _log.info(f"API for {subcommand = }, {api_response = }")
-
-        # populate to db
+    def _populate_to_db(self, subcommand: str, api_response: list[dict]):
+        """helper funciton to poulate to a sqlite db"""
         if subcommand == "get_load" or subcommand == "get_load_v2":
             table_name = "getLoad"
             table_schema = [
@@ -134,7 +118,6 @@ class ChargePointAPIAgent(Agent):
             ]
             primary_keys = ["sessionID", "queryTimeUTC"]
         elif subcommand == "get_15min":
-            method = self.get_15min_api.get15minCharginSessionDataAPI
             table_name = "get15minCharginSessionData"
             table_schema = [
                 ("stationTime", "TEXT"),
@@ -145,7 +128,6 @@ class ChargePointAPIAgent(Agent):
             ]
             primary_keys = ["sessionID", "stationTime"]
         elif subcommand == "get_charging_session":
-            method = self.get_charging_session_api.getChargingSessionDataAPI
             table_name = "getChargingSessionData"
             table_schema = [
                 ("stationID", "TEXT"),
@@ -208,7 +190,10 @@ class ChargePointAPIAgent(Agent):
         _log.info(f"{db_path = }, {default_db_path = }")
 
         # Initialize the handler
-        db_handler = EnergyDataHandler(db_path)
+        # db_handler = EnergyDataHandler(db_path)
+        from .db_handler import EnergyDataHandlerPostGreSQL
+
+        db_handler = EnergyDataHandlerPostGreSQL(password="password")
 
         # db_handler.remove_table(table_name)
         db_handler.create_table(table_name, table_schema, primary_keys)
@@ -219,6 +204,117 @@ class ChargePointAPIAgent(Agent):
         )
 
         _log.info(f"Inserted data to {table_name = }, {inserted_data = }")
+
+    def periodic_recall(self):
+        # Get subcommand from config and assign method
+        subcommand = self.config.get("subcommand")
+        if subcommand == "get_load":
+            method = self.get_load_api.getLoadAPI
+        elif subcommand == "get_load_v2":
+            method = self.get_load_api.getLoadAPI_v2
+        elif subcommand == "get_15min":
+            method = self.get_15min_api.get15minCharginSessionDataAPI
+        elif subcommand == "get_charging_session":
+            method = self.get_charging_session_api.getChargingSessionDataAPI
+        else:
+            raise ValueError(f"Invalid subcommand: {self.config.get('subcommand')}")
+
+        # Evoke API call based on subcommand
+        kwargs = self.charge_point_entry_kwargs
+        api_response: list[dict] = method(**kwargs)
+
+        if not api_response:
+            _log.warning(f"No data received for {subcommand = }")
+            return
+        else:
+            _log.info(f"API for {subcommand = }, {api_response = }")
+
+        # populate to db
+        if self.config.get("polulate_to_db") == True:
+            self._populate_to_db(subcommand, api_response)
+        if True:
+            self._populate_to_db(subcommand, api_response)
+
+        # publish control
+        if subcommand == "get_load" or subcommand == "get_load_v2":
+            api_name = "getLoad"
+            primary_keys = ["sessionID", "queryTimeUTC"]
+            publish_keys = (
+                primary_keys + ["portLoad"]
+            )  # ["sessionID", "queryTimeUTC", "portLoad"] #    "portNumber", "stationName"
+            # topic_format like "devices/PNNL/chargepoint{getLoad}/{MSL5}/port{2}"
+            for row in api_response:
+                # row = iter_row[1].to_dict()
+                topic = f"devices/PNNL/chargepoint_{api_name}/{_get_cleaned_station_name(row['stationName'])}/port{row['portNumber']}"
+                message = {k: row[k] for k in publish_keys}
+                self._publish_row(topic, message)
+
+        elif subcommand == "get_15min":
+            api_name = "get15min"
+            primary_keys = ["sessionID"]
+            publish_keys = primary_keys + [
+                "stationTime",
+                "energyConsumed",
+                "peakPower",
+                "rollingPowerAvg",
+            ]  # plus   "portNumber", "stationName"
+            # topic_format like "devices/PNNL/chargepoint_{get15min}/{MSL5}/port{2}"
+            # TODO: need to join get_charging_session_result
+            for row in api_response:
+                # row = iter_row[1].to_dict()
+                charging_session_info = (
+                    self.get_charging_session_api.getChargingSessionDataAPI(
+                        sessionID=row["sessionID"]
+                    )
+                )
+                topic = f"devices/PNNL/chargepoint_{api_name}/{_get_cleaned_station_name(charging_session_info['stationName'])}/port{charging_session_info['portNumber']}"
+                message = {k: row[k] for k in publish_keys}
+                self._publish_row(topic, message)
+        elif subcommand == "get_charging_session":
+            ...
+        else:
+            raise ValueError(f"Invalid subcommand: {self.config.get('subcommand')}")
+
+    def _publish_row(self, topic, message):
+        headers = {headers_mod.TIMESTAMP: utils.format_timestamp(datetime.utcnow())}
+        # Publish on the TNS namespace:
+        _log.info("Publishing data to topic '%s': %s", topic, message)
+        try:
+            self.vip.pubsub.publish(
+                peer="pubsub", topic=topic, headers=headers, message=message
+            ).get(timeout=10)
+        except Exception as e:
+            _log.error("Error publishing data: %s", e)
+
+
+def _get_cleaned_station_name(original_name: str):
+    """EXAMPLE: "PNNL / MSL5" -> MSL5"""
+    # Note: the naming convention of PNNL station is like "PNNL / XXXX"
+    if "/" in original_name:
+        return _strip_special_chars(original_name.split("/")[1])
+    else:
+        return _strip_special_chars(original_name)
+
+
+def _strip_special_chars(input_string):
+    """
+    Removes all special characters from the input string, retaining only alphanumeric characters (letters and numbers).
+
+    Args:
+    input_string (str): The string from which to remove special characters.
+
+    Returns:
+    str: A new string containing only alphanumeric characters.
+
+
+    # Example usage:
+    test_string = "Hello, World! 123."
+    cleaned_string = strip_special_chars(test_string)
+    print(cleaned_string)  # Output: 'HelloWorld123'
+    """
+    # This regular expression replaces any characters that are NOT letters or numbers with an empty string
+    cleaned_string = re.sub(r"[^a-zA-Z0-9]", "", input_string)
+    return cleaned_string
 
 
 def main():
