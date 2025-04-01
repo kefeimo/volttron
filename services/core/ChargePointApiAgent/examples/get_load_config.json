@@ -8,5 +8,11 @@
         "sgID": null,
         "sessionID": null
     },
-    "db_path": null
+    "db_type": "postgresql",
+    "db_init_args": {
+        "db_name": "energy_data",
+        "user": "postgres",
+        "password": "password",
+        "host": "localhost"
+    }
 }

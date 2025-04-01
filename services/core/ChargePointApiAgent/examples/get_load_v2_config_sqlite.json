@@ -31,11 +31,8 @@
             "5:11649291"
         ]
     },
-    "db_type": "postgresql",
+    "db_type": "sqlite",
     "db_init_args": {
-        "db_name": "energy_data",
-        "user": "postgres",
-        "password": "password",
-        "host": "localhost"
+        "db_path": "energy_data.db"
     }
 }

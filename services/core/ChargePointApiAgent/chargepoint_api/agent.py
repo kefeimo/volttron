@@ -25,10 +25,10 @@ except ImportError:
 # from pydnp3 import opendnp3
 # from typing import Dict
 from .chargepoint_api_service import (
-    EnergyDataHandler,
     Get15minChargingSessionDataAPI,
     GetChargingSessionDataAPI,
     GetLoadAPI,
+    populate_to_db,
 )
 
 _log = logging.getLogger("ChargePoint-agent")
@@ -96,115 +96,6 @@ class ChargePointAPIAgent(Agent):
         # Note: callback func evoked periodically
         self.core.periodic(self.publish_interval, self.periodic_recall)
 
-    def _populate_to_db(self, subcommand: str, api_response: list[dict]):
-        """helper funciton to poulate to a sqlite db"""
-        if subcommand == "get_load" or subcommand == "get_load_v2":
-            table_name = "getLoad"
-            table_schema = [
-                ("portNumber", "TEXT"),
-                ("userID", "TEXT"),
-                ("credentialID", "TEXT"),
-                ("shedState", "INTEGER"),
-                ("portLoad", "REAL"),
-                ("allowedLoad", "REAL"),
-                ("percentShed", "REAL"),
-                ("sessionID", "INTEGER"),
-                ("lastBatteryPercent", "REAL"),
-                ("stationID", "TEXT"),
-                ("stationName", "TEXT"),
-                ("Address", "TEXT"),
-                ("stationLoad", "REAL"),
-                ("queryTimeUTC", "TEXT"),
-            ]
-            primary_keys = ["sessionID", "queryTimeUTC"]
-        elif subcommand == "get_15min":
-            table_name = "get15minCharginSessionData"
-            table_schema = [
-                ("stationTime", "TEXT"),
-                ("energyConsumed", "REAL"),
-                ("peakPower", "REAL"),
-                ("rollingPowerAvg", "REAL"),
-                ("sessionID", "INTEGER"),
-            ]
-            primary_keys = ["sessionID", "stationTime"]
-        elif subcommand == "get_charging_session":
-            table_name = "getChargingSessionData"
-            table_schema = [
-                ("stationID", "TEXT"),
-                ("stationName", "TEXT"),
-                ("portNumber", "TEXT"),
-                ("Address", "TEXT"),
-                ("City", "TEXT"),
-                ("State", "TEXT"),
-                ("Country", "TEXT"),
-                ("postalCode", "TEXT"),
-                (
-                    "sessionID",
-                    "INTEGER",
-                ),  # PK
-                ("Energy", "REAL"),
-                ("startTime", "TEXT"),  # Storing as ISO8601 string
-                ("endTime", "TEXT"),  # Storing as ISO8601 string
-                (
-                    "totalChargingDuration",
-                    "TEXT",
-                ),  # Could be INTEGER if stored as seconds
-                (
-                    "totalSessionDuration",
-                    "TEXT",
-                ),  # Could be INTEGER if stored as seconds
-                ("userID", "TEXT"),
-                ("startBatteryPercentage", "REAL"),
-                ("stopBatteryPercentage", "REAL"),
-                ("recordNumber", "INTEGER"),
-                ("credentialID", "TEXT"),
-                ("endedBy", "TEXT"),
-                ("vehicleMake", "TEXT"),
-                ("vehicleModel", "TEXT"),
-                ("vehicleModelYear", "INTEGER"),
-                ("vehicleType", "TEXT"),
-                ("vehiclePortMAC", "TEXT"),
-                (
-                    "driverOptedOut",
-                    "INTEGER",
-                ),  # Assuming this is a boolean flag (0 or 1)
-                ("driverOptOutTimestamp", "TEXT"),  # Storing as ISO8601 string
-                ("paymentTerminalInfo", "TEXT"),
-            ]
-            primary_keys = ["sessionID"]
-        else:
-            raise ValueError(f"Invalid subcommand: {self.config.get('subcommand')}")
-
-        # populate to db
-        # Get the directory of the current script
-        script_directory = os.path.dirname(os.path.abspath(__file__))
-        volttron_home_path = os.environ.get("VOLTTRON_HOME")
-        # print("Script is running in:", script_directory)
-        default_db_path = os.path.join(volttron_home_path, "chargePoint_testing.db")
-        db_path_from_config = self.config.get("db_path")
-        if db_path_from_config:
-            db_path = db_path_from_config
-        else:
-            db_path = default_db_path
-
-        _log.info(f"{db_path = }, {default_db_path = }")
-
-        # Initialize the handler
-        # db_handler = EnergyDataHandler(db_path)
-        from .db_handler import EnergyDataHandlerPostGreSQL
-
-        db_handler = EnergyDataHandlerPostGreSQL(password="password")
-
-        # db_handler.remove_table(table_name)
-        db_handler.create_table(table_name, table_schema, primary_keys)
-        # Insert data
-        inserted_data = db_handler.insert_data_to_table(
-            table_name,
-            pd.DataFrame(api_response),
-        )
-
-        _log.info(f"Inserted data to {table_name = }, {inserted_data = }")
-
     def periodic_recall(self):
         # Get subcommand from config and assign method
         subcommand = self.config.get("subcommand")
@@ -230,10 +121,11 @@ class ChargePointAPIAgent(Agent):
             _log.info(f"API for {subcommand = }, {api_response = }")
 
         # populate to db
-        if self.config.get("polulate_to_db") == True:
-            self._populate_to_db(subcommand, api_response)
-        if True:
-            self._populate_to_db(subcommand, api_response)
+        if self.config.get("db_type"):
+            db_type: str = self.config.get("db_type")
+            db_init_args: dict = self.config.get("db_init_args")
+            subcommand_modi = "get_load" if subcommand == "get_load_v2" else subcommand
+            populate_to_db(db_type, db_init_args, subcommand_modi, api_response)
 
         # publish control
         if subcommand == "get_load" or subcommand == "get_load_v2":
