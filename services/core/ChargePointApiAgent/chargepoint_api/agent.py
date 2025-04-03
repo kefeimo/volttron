@@ -128,13 +128,17 @@ class ChargePointAPIAgent(Agent):
         # populate to db
         if self.config.get("db_type"):
             subcommand_modi = "get_load" if subcommand == "get_load_v2" else subcommand
-            try:
-                inserted_data = self.db_handler.populate_to_db(
-                    subcommand_modi, api_response, logger=_log
-                )
-                _log.info(f"Inserted data to table, {inserted_data = }")
-            except Exception as e:
-                _log.error(f"======== Error populating data to db: {e}")
+            inserted_data = self.db_handler.populate_to_db(
+                subcommand_modi, api_response, logger=_log
+            )
+            _log.info(f"Inserted data to table, {inserted_data = }")
+            # try:
+            #     inserted_data = self.db_handler.populate_to_db(
+            #         subcommand_modi, api_response, logger=_log
+            #     )
+            #     _log.info(f"Inserted data to table, {inserted_data = }")
+            # except Exception as e:
+            #     _log.error(f"======== Error populating data to db: {e}")
 
         # publish control
         if subcommand == "get_load" or subcommand == "get_load_v2":
