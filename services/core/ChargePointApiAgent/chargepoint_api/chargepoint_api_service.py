@@ -40,6 +40,17 @@ _log.addHandler(file_handler)
 _log.addHandler(stream_handler)
 
 
+# Function to set logging level for all zeep loggers (e.g. zeep.transports, zeep.xsd.schema, zeep.wsdl.wsdl)
+def set_zeep_loggers_level(level):
+    for logger_name in logging.root.manager.loggerDict:
+        if logger_name.startswith("zeep"):
+            logging.getLogger(logger_name).setLevel(level)
+
+
+# Set the logging level to INFO for all zeep loggers
+set_zeep_loggers_level(logging.INFO)
+
+
 def paginated_api_call(
     api_entry_name,
     data_section_name,
