@@ -152,7 +152,25 @@ class EnergyDataHandlerPostGreSQL(BaseDataHandler):
         target_df_filtered = target_df[unique_indices]
         return target_df_filtered
 
-    def insert_data_to_table(self, table_name, df):
+    def insert_data_to_table(self, table_name, df: pd.DataFrame) -> pd.DataFrame:
+        """Insert data from a pandas DataFrame"""
+        pk_columns = self.get_primary_key_columns(table_name)
+        ref_df = self.query_data_from_table(table_name)
+        df_filtered = self._filter_duplicates(
+            target_df=df, reference_df=ref_df, pk_columns=pk_columns
+        )
+        if not df_filtered.empty:
+            self._insert_data_to_table(table_name, df_filtered)
+            self.logger.info(
+                f"Data inserted successfully: {len(df_filtered)} records added."
+            )
+        else:
+            self.logger.warning("No new records to insert; all records are duplicates.")
+
+            """Insert data from a pandas DataFrame."""
+        return df_filtered
+
+    def _insert_data_to_table(self, table_name, df):
         """Insert data from a pandas DataFrame."""
         try:
             # Reflect the table schema from the database
@@ -184,7 +202,7 @@ class EnergyDataHandlerPostGreSQL(BaseDataHandler):
         """Retrieve the list of primary key columns for a given table."""
         result = self.conn.execute(
             text(
-                f"SELECT a.attname FROM pg_index i JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = ANY(i.indkey) WHERE i.indrelid = '{table_name}'::regclass AND i.indisprimary;"
+                f"SELECT a.attname FROM pg_index i JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = ANY(i.indkey) WHERE i.indrelid = '\"{table_name}\"'::regclass AND i.indisprimary;"
             )
         )
         columns = [row[0] for row in result.fetchall()]
@@ -192,7 +210,7 @@ class EnergyDataHandlerPostGreSQL(BaseDataHandler):
 
     def query_data_from_table(self, table_name):
         """Query all data from the table (for verification)."""
-        return pd.read_sql(f"SELECT * FROM {table_name}", self.conn)
+        return pd.read_sql(f'SELECT * FROM "{table_name}"', self.conn)
 
     def close(self):
         """Close the database connection."""
