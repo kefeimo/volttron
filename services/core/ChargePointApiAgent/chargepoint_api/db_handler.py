@@ -3,7 +3,17 @@ import sqlite3
 from abc import ABC, abstractmethod
 
 import pandas as pd
-from sqlalchemy import create_engine, text
+from sqlalchemy import (
+    Column,
+    Float,
+    Integer,
+    MetaData,
+    PrimaryKeyConstraint,
+    String,
+    Table,
+    create_engine,
+    text,
+)
 from sqlalchemy.exc import SQLAlchemyError
 
 _log = logging.getLogger(__name__)
@@ -35,11 +45,11 @@ class BaseDataHandler:
         pass
 
     @abstractmethod
-    def insert_data_to_table(self, table_name, df):
+    def insert_data_to_table(self, table_name, df) -> pd.DataFrame:
         pass
 
     @abstractmethod
-    def query_data_from_table(self, table_name):
+    def query_data_from_table(self, table_name) -> pd.DataFrame:
         pass
 
     @abstractmethod
@@ -62,10 +72,16 @@ class EnergyDataHandlerPostGreSQL(BaseDataHandler):
         user="postgres",
         password="yourpassword",
         host="localhost",
+        logger=None,
     ):
         """Initialize the database connection to a persistent PostgreSQL database."""
         self.engine = self.create_connection(db_name, user, password, host)
         self.conn = self.engine.connect()
+        if logger is not None:
+            self.logger = logger
+        else:
+            self.logger = _log
+        # self.metadata = MetaData()
 
     def create_connection(self, db_name, user, password, host):
         # Create the initial connection to the PostgreSQL server
@@ -98,15 +114,33 @@ class EnergyDataHandlerPostGreSQL(BaseDataHandler):
     def create_table(self, table_name, schema, primary_keys):
         """Create a table if it does not exist, using a defined schema."""
         try:
-            columns = ", ".join(
-                [f"{col_name} {data_type}" for col_name, data_type in schema]
-            )
-            primary_keys_sql = f"PRIMARY KEY ({', '.join(primary_keys)})"
-            query = f"CREATE TABLE IF NOT EXISTS {table_name} ({columns}, {primary_keys_sql})"
-            self.conn.execute(text(query))
-            print("Table created or verified successfully")
+            # Define columns using SQLAlchemy
+            columns = [
+                Column(name, self.get_sqlalchemy_type(dtype)) for name, dtype in schema
+            ]
+            # Add primary key constraint if primary keys are specified
+            if primary_keys:
+                columns.append(PrimaryKeyConstraint(*primary_keys))
+
+            # Create the table object
+            metadata = MetaData()
+            table = Table(table_name, metadata, *columns, extend_existing=True)
+
+            # Create the table in the database
+            table.create(self.engine, checkfirst=True)
+
+            # Log the successful creation
+            print(f"Table '{table_name}' created or verified successfully.")
         except SQLAlchemyError as e:
-            raise SQLAlchemyError(f"Error creating table: {e}")
+            print(f"Error creating table: {e}")
+            raise
+
+    def get_sqlalchemy_type(self, dtype):
+        """Map data types to SQLAlchemy types."""
+        type_mapping = {"INTEGER": Integer, "REAL": Float, "TEXT": String}
+        return type_mapping.get(
+            dtype.upper(), String
+        )  # Default to String if type is unknown
 
     def _filter_duplicates(self, target_df, reference_df, pk_columns):
         """Filter out duplicates based on primary key columns."""
@@ -121,10 +155,30 @@ class EnergyDataHandlerPostGreSQL(BaseDataHandler):
     def insert_data_to_table(self, table_name, df):
         """Insert data from a pandas DataFrame."""
         try:
-            df.to_sql(table_name, self.engine, if_exists="append", index=False)
-            print(f"Data inserted successfully: {len(df)} records added.")
+            # Reflect the table schema from the database
+            metadata = MetaData()
+            metadata.reflect(bind=self.engine)
+
+            # Ensure the table exists and get the table schema
+            if table_name in metadata.tables:
+                table = metadata.tables[table_name]
+                # Align DataFrame columns to the table schema: this prevents issues with column order or missing columns
+                df = df[list(table.columns.keys())]
+
+                # Insert data ensuring the DataFrame's columns match the order and presence of the table's columns
+                df.to_sql(table_name, self.engine, if_exists="append", index=False)
+
+                self.logger.info(
+                    f"Data inserted successfully: {len(df)} records added."
+                )
+            else:
+                self.logger.error(f"Table '{table_name}' does not exist.")
+                raise ValueError(f"Table '{table_name}' does not exist.")
         except SQLAlchemyError as e:
-            raise SQLAlchemyError(f"Error inserting data: {e}")
+            self.logger.error(f"Error inserting data to {table_name}: {str(e)}")
+            raise SQLAlchemyError(f"Error inserting data to {table_name}: {str(e)}")
+
+        return df
 
     def get_primary_key_columns(self, table_name):
         """Retrieve the list of primary key columns for a given table."""
@@ -144,7 +198,8 @@ class EnergyDataHandlerPostGreSQL(BaseDataHandler):
         """Close the database connection."""
         try:
             self.conn.close()
-            print("Database connection closed")
+            # print("Database connection closed")
+            self.logger.info("Database connection closed")
         except SQLAlchemyError as e:
             raise SQLAlchemyError(f"Error closing the database connection: {e}")
 
@@ -152,23 +207,30 @@ class EnergyDataHandlerPostGreSQL(BaseDataHandler):
         """Remove a specified table from the database."""
         try:
             self.conn.execute(text(f"DROP TABLE IF EXISTS {table_name}"))
-            print(f"Table {table_name} has been removed successfully.")
+            # print(f"Table {table_name} has been removed successfully.")
+            self.logger.info(f"Table {table_name} has been removed successfully.")
         except SQLAlchemyError as e:
             raise SQLAlchemyError(f"Error removing table {table_name}: {e}")
 
 
 class EnergyDataHandlerSqlite(BaseDataHandler):
-    def __init__(self, db_path="energy_data.db"):
+    def __init__(self, db_path="energy_data.db", logger=None):
         """Initialize the database connection to a persistent SQLite database."""
         self.db_path = db_path
         self.conn = self.create_connection()
         self.cursor = self.conn.cursor()
+        if logger is not None:
+            self.logger = logger
+        else:
+            self.logger = _log
 
     def create_connection(self):
         """Create and return a database connection."""
         try:
             conn = sqlite3.connect(self.db_path)
-            _log.info(f"SQLite Database connected successfully at {self.db_path}")
+            self.logger.info(
+                f"SQLite Database connected successfully at {self.db_path}"
+            )
             return conn
         except sqlite3.Error as e:
             raise sqlite3.Error(f"Error connecting to database: {e}")
@@ -187,7 +249,7 @@ class EnergyDataHandlerSqlite(BaseDataHandler):
             ("energyConsumed", "REAL"),
             ("peakPower", "REAL"),
             ("rollingPowerAvg", "REAL"),
-            ("sessionID", "INTEGER PRIMARY KEY")
+            ("sessionID", "INTEGER")
         ]
 
             primary_keys = ['stationTime', 'sessionID']
@@ -210,9 +272,9 @@ class EnergyDataHandlerSqlite(BaseDataHandler):
             """
             self.conn.execute(query)
             self.conn.commit()
-            _log.info("Table created or verified successfully")
-        except sqlite3.Error as e:
-            raise sqlite3.Error(f"Error creating table: {e}")
+            self.logger.info("Table created or verified successfully")
+        except Exception as e:
+            raise Exception(f"Error creating table: {e}")
 
     @staticmethod
     def _filter_duplicates(
@@ -247,9 +309,11 @@ class EnergyDataHandlerSqlite(BaseDataHandler):
         )
         if not df_filtered.empty:
             df_filtered.to_sql(table_name, self.conn, if_exists="append", index=False)
-            _log.info(f"Data inserted successfully: {len(df_filtered)} records added.")
+            self.logger.info(
+                f"Data inserted successfully: {len(df_filtered)} records added."
+            )
         else:
-            _log.warning("No new records to insert; all records are duplicates.")
+            self.logger.warning("No new records to insert; all records are duplicates.")
 
             """Insert data from a pandas DataFrame."""
         return df_filtered
@@ -273,7 +337,7 @@ class EnergyDataHandlerSqlite(BaseDataHandler):
         """Close the database connection."""
         try:
             self.conn.close()
-            _log.info("Database connection closed")
+            self.logger.info("Database connection closed")
         except sqlite3.Error as e:
             raise sqlite3.Error(f"Error closing the database connection: {e}")
 
@@ -289,6 +353,6 @@ class EnergyDataHandlerSqlite(BaseDataHandler):
             query = f"DROP TABLE IF EXISTS {table_name}"
             self.conn.execute(query)
             self.conn.commit()
-            _log.info(f"Table {table_name} has been removed successfully.")
+            self.logger.info(f"Table {table_name} has been removed successfully.")
         except sqlite3.Error as e:
             raise sqlite3.Error(f"Error removing table {table_name}: {e}")

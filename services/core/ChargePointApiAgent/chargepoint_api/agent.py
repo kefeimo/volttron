@@ -15,6 +15,8 @@ import pandas as pd
 from volttron.platform.agent import utils
 from volttron.platform.vip.agent import RPC, Agent, Core
 
+from .chargepoint_api_service import DbHandler
+
 try:
     from volttron.client.messaging import headers as headers_mod
 except ImportError:
@@ -28,7 +30,6 @@ from .chargepoint_api_service import (
     Get15minChargingSessionDataAPI,
     GetChargingSessionDataAPI,
     GetLoadAPI,
-    populate_to_db,
 )
 
 _log = logging.getLogger("ChargePoint-agent")
@@ -79,6 +80,10 @@ class ChargePointAPIAgent(Agent):
             "charge_point_entry_kwargs"
         )
 
+        db_type: str = self.config.get("db_type")
+        db_init_args: dict = self.config.get("db_init_args")
+        self.db_handler = DbHandler(db_type, db_init_args)
+
     def _config_callback_dummy(
         self, config_name: str, action: str, contents: dict
     ) -> None:
@@ -122,10 +127,14 @@ class ChargePointAPIAgent(Agent):
 
         # populate to db
         if self.config.get("db_type"):
-            db_type: str = self.config.get("db_type")
-            db_init_args: dict = self.config.get("db_init_args")
             subcommand_modi = "get_load" if subcommand == "get_load_v2" else subcommand
-            populate_to_db(db_type, db_init_args, subcommand_modi, api_response)
+            try:
+                inserted_data = self.db_handler.populate_to_db(
+                    subcommand_modi, api_response, logger=_log
+                )
+                _log.info(f"Inserted data to table, {inserted_data = }")
+            except Exception as e:
+                _log.error(f"======== Error populating data to db: {e}")
 
         # publish control
         if subcommand == "get_load" or subcommand == "get_load_v2":
