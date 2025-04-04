@@ -8,6 +8,7 @@ import logging
 import os
 import re
 import sys
+import time
 from datetime import datetime
 
 import pandas as pd
@@ -123,42 +124,38 @@ class ChargePointAPIAgent(Agent):
             _log.warning(f"No data received for {subcommand = }")
             return
         else:
-            _log.info(f"API for {subcommand = }, {api_response = }")
+            _log.info(f"API Response for {subcommand = }, {api_response = }")
 
         # populate to db
         if self.config.get("db_type"):
             subcommand_modi = "get_load" if subcommand == "get_load_v2" else subcommand
-            inserted_data = self.db_handler.populate_to_db(
-                subcommand_modi, api_response, logger=_log
-            )
-            _log.info(f"Inserted data to table, {inserted_data = }")
-            # try:
-            #     inserted_data = self.db_handler.populate_to_db(
-            #         subcommand_modi, api_response, logger=_log
-            #     )
-            #     _log.info(f"Inserted data to table, {inserted_data = }")
-            # except Exception as e:
-            #     _log.error(f"======== Error populating data to db: {e}")
+            try:
+                inserted_data = self.db_handler.populate_to_db(
+                    subcommand_modi, api_response, logger=_log
+                )
+                _log.info(f"Inserted data to table, {inserted_data = }")
+            except Exception as e:
+                _log.error(f"======== Error populating data to db: {e}")
 
         # publish control
         if subcommand == "get_load" or subcommand == "get_load_v2":
             api_name = "getLoad"
-            primary_keys = ["sessionID", "queryTimeUTC"]
-            publish_keys = (
-                primary_keys + ["portLoad"]
-            )  # ["sessionID", "queryTimeUTC", "portLoad"] #    "portNumber", "stationName"
+            # primary_keys = ["sessionID", ]
+            publish_keys = ["portLoad", "sessionID"]
+            # ["sessionID", "queryTimeUTC", "portLoad"] #    "portNumber", "stationName"
             # topic_format like "devices/PNNL/chargepoint{getLoad}/{MSL5}/port{2}"
             for row in api_response:
                 # row = iter_row[1].to_dict()
-                topic = f"devices/PNNL/chargepoint_{api_name}/{_get_cleaned_station_name(row['stationName'])}/port{row['portNumber']}"
+                topic = f"devices/PNNL/chargepoint_{api_name}/{_get_cleaned_station_name(row['stationName'])}/port{row['portNumber']}/all"
                 message = {k: row[k] for k in publish_keys}
-                self._publish_row(topic, message)
+                headers = {headers_mod.TIMESTAMP: message["queryTimeUTC"]}
+                self._publish_row(headers, topic, message)
 
         elif subcommand == "get_15min":
             api_name = "get15min"
-            primary_keys = ["sessionID"]
-            publish_keys = primary_keys + [
-                "stationTime",
+            # primary_keys = ["stationTime", "sessionID"]
+            publish_keys = [
+                "sessionID",
                 "energyConsumed",
                 "peakPower",
                 "rollingPowerAvg",
@@ -167,23 +164,48 @@ class ChargePointAPIAgent(Agent):
             # TODO: need to join get_charging_session_result
             for row in api_response:
                 # row = iter_row[1].to_dict()
-                charging_session_info = (
+                charging_session_info: dict = (
                     self.get_charging_session_api.getChargingSessionDataAPI(
                         sessionID=row["sessionID"]
                     )
-                )
-                topic = f"devices/PNNL/chargepoint_{api_name}/{_get_cleaned_station_name(charging_session_info['stationName'])}/port{charging_session_info['portNumber']}"
+                )[0]
+                topic = f"devices/PNNL/chargepoint_{api_name}/{_get_cleaned_station_name(charging_session_info['stationName'])}/port{charging_session_info['portNumber']}/all"
                 message = {k: row[k] for k in publish_keys}
-                self._publish_row(topic, message)
+                modified_time: str = row["stationTime"]
+                headers = {headers_mod.TIMESTAMP: modified_time}
+                self._publish_row(headers, topic, message)
+
         elif subcommand == "get_charging_session":
-            ...
+            api_name = "getChargingSession"
+            # primary_keys = ["stationTime", "sessionID"]
+            publish_keys = [
+                "startTime",
+                "endTime",
+                "sessionID",
+                "Energy",
+                "totalChargingDuration",
+                "totalSessionDuration",
+            ]  # plus   "portNumber", "stationName"
+            # topic_format like "devices/PNNL/chargepoint_{getChargingSession}/{MSL5}/port{2}"
+            for row in api_response:
+                # row = iter_row[1].to_dict()
+                charging_session_info: dict = (
+                    self.get_charging_session_api.getChargingSessionDataAPI(
+                        sessionID=row["sessionID"]
+                    )
+                )[0]
+                topic = f"devices/PNNL/chargepoint_{api_name}/{_get_cleaned_station_name(charging_session_info['stationName'])}/port{charging_session_info['portNumber']}/all"
+                message = {k: row[k] for k in publish_keys}
+                modified_time: str = row["startTime"]
+                headers = {headers_mod.TIMESTAMP: modified_time}
+                self._publish_row(headers, topic, message)
         else:
             raise ValueError(f"Invalid subcommand: {self.config.get('subcommand')}")
 
-    def _publish_row(self, topic, message):
-        headers = {headers_mod.TIMESTAMP: utils.format_timestamp(datetime.utcnow())}
+    def _publish_row(self, headers, topic, message):
+        # headers = {headers_mod.TIMESTAMP: utils.format_timestamp(datetime.utcnow())}
         # Publish on the TNS namespace:
-        _log.info("Publishing data to topic '%s': %s", topic, message)
+        _log.info(f"Publishing data to topic {headers =}, {topic =}, {message =}")
         try:
             self.vip.pubsub.publish(
                 peer="pubsub", topic=topic, headers=headers, message=message

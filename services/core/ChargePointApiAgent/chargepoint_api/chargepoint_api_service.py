@@ -227,6 +227,12 @@ class Get15minChargingSessionDataAPI(ChargePointApi):
                     _log.warning(
                         f"Warning: encoutered and skipped {e = }, {session_id = }"
                     )
+        # clean up time
+        for d in fifteen_min_data_collection:
+            # convert the time to UTC format
+            station_time = pd.to_datetime(d["stationTime"])
+            d["stationTime"] = station_time.strftime("%Y-%m-%dT%H:%M:%S")
+
         return fifteen_min_data_collection
 
     def get15minCharginSessionDataAPI(
@@ -386,6 +392,13 @@ class GetChargingSessionDataAPI(ChargePointApi):
             ]
         if is_period_auto_defined:
             self._has_tried_to_poll_all_history = True  # set the flag
+        # clean up time
+        for d in session_data_res:
+            # convert the time to UTC format
+            d["startTime"] = (pd.to_datetime(d["startTime"])).strftime(
+                "%Y-%m-%dT%H:%M:%S"
+            )
+            d["endTime"] = (pd.to_datetime(d["endTime"])).strftime("%Y-%m-%dT%H:%M:%S")
         return session_data_res
 
 

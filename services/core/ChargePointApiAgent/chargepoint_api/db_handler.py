@@ -159,6 +159,7 @@ class EnergyDataHandlerPostGreSQL(BaseDataHandler):
         df_filtered = self._filter_duplicates(
             target_df=df, reference_df=ref_df, pk_columns=pk_columns
         )
+        self.logger.info(f"Data to be inserted {df_filtered = } ")
         if not df_filtered.empty:
             self._insert_data_to_table(table_name, df_filtered)
             self.logger.info(
